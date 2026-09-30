@@ -45,6 +45,7 @@ vm.runInContext(source, context);
 const app = context.test;
 const parkId = vm.runInContext('MUNICIPAL_PARKS[0].id', context);
 app.init();
+app.appState.settings.inspectorName = "Lasse";
 app.navigateTo('overview', {parkId: parkId});
 app.navigateTo('form', {featureId: 'Gångbro'});
 history.back();

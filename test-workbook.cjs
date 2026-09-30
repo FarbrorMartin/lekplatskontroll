@@ -10,8 +10,9 @@ const workbook = () => XLSX.read(bytes);
 const rows = name => ctx.readWorkbookRows(workbook(), name);
 const parks = rows('Lekplatsmatris'), checks = rows('Element');
 const config = ctx.configurationFromWorkbook(workbook());
-assert.equal(config.parks.length, 4);
-assert.equal(Object.keys(config.featureTypes).length, 4);
+const parkCount = parks.slice(1).filter(row => row[0]).length;
+assert.equal(config.parks.length, parkCount);
+assert.equal(Object.keys(config.featureTypes).length, checks[0].filter(Boolean).length);
 assert.deepEqual([...config.parks[0].featureIds], ['Gångbro', 'Skulptur', 'Lekhus']);
 assert.equal(config.featureTypes.Skulptur.points.length, 3);
 assert.equal(config.featureTypes['Gångbro'].pointIds[0], 'Gångbro:1');
@@ -20,11 +21,11 @@ assert.equal(config.featureTypes['Spång'].points.length, 5);
 assert.equal(config.featureTypes.Lekhus.points.length, 5);
 assert.equal(config.featureTypes.Lekhus.points[0], config.featureTypes['Gångbro'].points[0]);
 const reversed = workbook(); reversed.SheetNames.reverse();
-assert.equal(ctx.configurationFromWorkbook(reversed).parks.length, 4);
+assert.equal(ctx.configurationFromWorkbook(reversed).parks.length, parkCount);
 const missing = workbook(); delete missing.Sheets.Element;
 assert.throws(() => ctx.configurationFromWorkbook(missing), /saknas/);
 const decorated = workbook(); decorated.Sheets.Lekplatsmatris['!ref'] = 'A1:J30';
-assert.equal(ctx.configurationFromWorkbook(decorated).parks.length, 4);
+assert.equal(ctx.configurationFromWorkbook(decorated).parks.length, parkCount);
 const badMarker = workbook(); badMarker.Sheets.Lekplatsmatris.B2.v = 'Ja';
 assert.throws(() => ctx.configurationFromWorkbook(badMarker), /Använd X/);
 const edited = workbook(); edited.Sheets.Lekplatsmatris.C2 = {t: 's', v: 'x'};
@@ -32,10 +33,10 @@ assert.ok(ctx.configurationFromWorkbook(edited).parks[0].featureIds.includes('Sp
 const added = workbook();
 // Simulate extending the matrix in Excel: a new row is read without code changes.
 for (const [index, value] of ['Ny lekplats', 'X', '', '', ''].entries()) {
-  added.Sheets.Lekplatsmatris[XLSX.utils.encode_cell({r: 5, c: index})] = {t: 's', v: value};
+  added.Sheets.Lekplatsmatris[XLSX.utils.encode_cell({r: parkCount + 1, c: index})] = {t: 's', v: value};
 }
-added.Sheets.Lekplatsmatris['!ref'] = 'A1:E6';
-assert.equal(ctx.configurationFromWorkbook(added).parks.length, 5);
+added.Sheets.Lekplatsmatris['!ref'] = XLSX.utils.encode_range({s: {r: 0, c: 0}, e: {r: parkCount + 1, c: parks[0].length - 1}});
+assert.equal(ctx.configurationFromWorkbook(added).parks.length, parkCount + 1);
 const duplicate = parks.map(row => [...row]); duplicate[2][0] = duplicate[1][0];
 assert.throws(() => ctx.buildConfiguration(duplicate, checks), /dubbla/);
 const unsafe = parks.map(row => [...row]); unsafe[1][0] = '__proto__';
@@ -63,6 +64,6 @@ assert.throws(() => ctx.configurationFromWorkbook(formula), /beräknat värde/);
 ctx.fetch = async () => ({ok: true, arrayBuffer: async () => bytes});
 ctx.loadConfiguration().then(() => {
   // Standalone reader does not require a CDN, Node API, or browser-specific file path.
-  assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), 4);
+  assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);
   console.log('Passed: XLSX reading, named tabs/columns, element lists of different lengths, shared wording, blank cells, X assignments, added playgrounds, duplicates, missing headers, mismatched elements, empty checklists, Excel errors and missing formula values.');
 }).catch(error => { console.error(error); process.exitCode = 1; });

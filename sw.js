@@ -1,5 +1,5 @@
-const CACHE = 'lekplatskontroll-v11';
-const ASSETS = ['./', './index.html', './app.js', './parks-data.js', './workbook-data.js', './styles.css?v=11', './assets/owl-banner.png', './vendor/xlsx.mini.min.js', './data/lekplatskontroll.xlsx'];
+const CACHE = 'lekplatskontroll-v16';
+const ASSETS = ['./', './index.html', './app.js?v=16', './parks-data.js', './workbook-data.js', './styles.css?v=16', './assets/owl-banner.png', './vendor/xlsx.mini.min.js', './data/lekplatskontroll.xlsx'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
 });

@@ -14,33 +14,24 @@
     selectedParkId: null,
     selectedFeatureId: null,
     surveyData: {},
-    settings: { ...DEFAULT_SETTINGS },
-    searchQuery: ""
+    settings: { ...DEFAULT_SETTINGS }
   };
 
   // --- DOM-ELEMENT ---
-  const elHeaderBack = document.getElementById("btn-header-back");
-  const elHeaderMainTitle = document.getElementById("header-main-title");
-  const elHeaderSubTitle = document.getElementById("header-sub-title");
-  const elHeaderProgress = document.getElementById("header-progress");
-  const elProgressText = document.getElementById("progress-text");
-  const elProgressPercent = document.getElementById("progress-percent");
-  const elProgressFill = document.getElementById("progress-fill");
+  const elBackButton = document.getElementById("btn-back");
+  const elNavigationTitle = document.getElementById("navigation-title");
 
-  const elSelectInspector = document.getElementById("select-inspector");
+  const elInspectorName = document.getElementById("input-inspector");
   const elScreenParks = document.getElementById("screen-parks");
   const elScreenParkOverview = document.getElementById("screen-park-overview");
   const elScreenFeatureForm = document.getElementById("screen-feature-form");
 
-  const elParkSearchInput = document.getElementById("input-park-search");
-  const elSearchClearBtn = document.getElementById("btn-search-clear");
   const elParksListContainer = document.getElementById("parks-list-container");
 
   const elStatTotal = document.getElementById("stat-total");
   const elStatCompleted = document.getElementById("stat-completed");
   const elStatIssues = document.getElementById("stat-issues");
 
-  const elOverviewParkName = document.getElementById("overview-park-name");
   const elOverviewParkMeta = document.getElementById("overview-park-meta");
   const elOverviewBadge = document.getElementById("overview-badge");
   const elFeaturesListContainer = document.getElementById("features-list-container");
@@ -65,7 +56,6 @@
   const elBtnFinishSurvey = document.getElementById("btn-finish-survey");
 
   // Inställningsmodal
-  const elBtnSettingsOpen = document.getElementById("btn-settings-open");
   const elModalSettings = document.getElementById("modal-settings");
   const elBtnCloseSettingsModal = document.getElementById("btn-close-settings-modal");
   const elSettingEmail = document.getElementById("setting-recipient-email");
@@ -80,12 +70,10 @@
   // --- INITIALISERING ---
   function init() {
     loadStorage();
-    setupInspectorDropdown();
+    setupInspectorInput();
     bindEvents();
     renderParksList();
     updateGlobalStats();
-    elHeaderSubTitle.textContent = `${MUNICIPAL_PARKS.length} kommunala lekplatser`;
-    elParkSearchInput.placeholder = `Sök bland ${MUNICIPAL_PARKS.length} lekplatser...`;
     const route = window.history.state;
     if (route && route.app === 'lekplatskontroll') {
       restoreRoute(route);
@@ -116,7 +104,7 @@
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
         appState.settings = { ...DEFAULT_SETTINGS, ...parsed };
-        if (!PRESET_INSPECTORS.includes(appState.settings.inspectorName)) appState.settings.inspectorName = DEFAULT_SETTINGS.inspectorName;
+        if (typeof appState.settings.inspectorName !== "string") appState.settings.inspectorName = DEFAULT_SETTINGS.inspectorName;
       }
     } catch (e) {
       storageReadFailed = true;
@@ -145,19 +133,14 @@
     }
   }
 
-  function setupInspectorDropdown() {
-    if (!elSelectInspector) return;
-    elSelectInspector.innerHTML = PRESET_INSPECTORS.map(name => {
-      const selected = name === appState.settings.inspectorName ? "selected" : "";
-      return `<option value="${name}" ${selected}>${name}</option>`;
-    }).join("");
+  function setupInspectorInput() {
+    if (!elInspectorName) return;
 
-    elSelectInspector.value = appState.settings.inspectorName || PRESET_INSPECTORS[0];
+    elInspectorName.value = appState.settings.inspectorName || "";
 
-    elSelectInspector.addEventListener("change", (e) => {
-      appState.settings.inspectorName = e.target.value;
+    elInspectorName.addEventListener("input", (e) => {
+      appState.settings.inspectorName = e.target.value.trim();
       if (!persistSettings()) return;
-      showToast(`Besiktningsman: ${appState.settings.inspectorName}`);
     });
   }
 
@@ -308,6 +291,11 @@
       return;
     }
     appState.currentScreen = screen;
+    const navigationBar = document.getElementById("navigation-bar");
+    if (screen === "parks") navigationBar.classList.add("main-page");
+    else navigationBar.classList.remove("main-page");
+    elBackButton.hidden = screen === "parks";
+    elNavigationTitle.textContent = screen === "parks" ? "" : (getPark(parkId)?.name || "");
 
     elScreenParks.classList.remove("active");
     elScreenParkOverview.classList.remove("active");
@@ -322,10 +310,6 @@
       appState.selectedParkId = null;
       appState.selectedFeatureId = null;
 
-      elHeaderBack.style.visibility = "hidden";
-      elHeaderMainTitle.textContent = "Lekplatskontroll";
-      elHeaderSubTitle.textContent = `${MUNICIPAL_PARKS.length} kommunala lekplatser`;
-      elHeaderProgress.style.display = "none";
 
       elScreenParks.classList.add("active");
       renderParksList();
@@ -338,15 +322,8 @@
       appState.selectedParkId = park.id;
       appState.selectedFeatureId = null;
 
-      elHeaderBack.style.visibility = "visible";
-      elHeaderMainTitle.textContent = park.name;
-      elHeaderSubTitle.textContent = [park.district, park.address].filter(Boolean).join(' · ') || `${park.featureIds.length} element`;
 
       const prog = calculateParkProgress(park.id);
-      elHeaderProgress.style.display = "block";
-      elProgressText.textContent = `${prog.completed} av ${prog.total} klara`;
-      elProgressPercent.textContent = `${prog.percent}%`;
-      elProgressFill.style.width = `${prog.percent}%`;
 
       elScreenParkOverview.classList.add("active");
       elBarParkOverview.style.display = "flex";
@@ -361,14 +338,11 @@
       appState.selectedParkId = park.id;
       appState.selectedFeatureId = featureType.id;
 
-      elHeaderBack.style.visibility = "visible";
-      elHeaderMainTitle.textContent = `${featureType.icon} ${featureType.name}`;
-      elHeaderSubTitle.textContent = park.name;
-      elHeaderProgress.style.display = "none";
 
       elScreenFeatureForm.classList.add("active");
       elBarFeatureForm.style.display = "flex";
 
+      elNavigationTitle.textContent = featureType.name;
       renderFeatureForm(park, featureType);
     }
     if (recordHistory && !sameRoute(previous)) {
@@ -380,24 +354,8 @@
 
   // --- SKÄRM 1: LEKPLATSLISTA ---
   function renderParksList() {
-    const query = appState.searchQuery.toLowerCase().trim();
-    const filteredParks = MUNICIPAL_PARKS.filter(p => {
-      return p.name.toLowerCase().includes(query) ||
-             p.district.toLowerCase().includes(query) ||
-             p.address.toLowerCase().includes(query);
-    });
-
-    if (filteredParks.length === 0) {
-      elParksListContainer.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">🔍</div>
-          <div class="empty-state-text">Inga lekplatser matchar "${escapeHtml(appState.searchQuery)}"</div>
-        </div>
-      `;
-      return;
-    }
-
-    elParksListContainer.innerHTML = filteredParks.map(park => {
+    const sortedParks = [...MUNICIPAL_PARKS].sort((a, b) => a.name.localeCompare(b.name, "sv"));
+    elParksListContainer.innerHTML = sortedParks.map(park => {
       park = getPark(park.id);
       const prog = calculateParkProgress(park.id);
       const survey = getParkSurvey(park.id);
@@ -442,7 +400,6 @@
 
   // --- SKÄRM 2: LEKPLATSÖVERSIKT ---
   function renderParkOverview(park) {
-    elOverviewParkName.textContent = park.name;
 
     const prog = calculateParkProgress(park.id);
     const survey = getParkSurvey(park.id);
@@ -893,26 +850,13 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     });
-    elHeaderBack.addEventListener("click", () => {
+
+    elBackButton.addEventListener("click", () => {
       if (appState.currentScreen === "form") {
-        navigateTo("overview", { parkId: appState.selectedParkId });
+        navigateTo("overview", {parkId: appState.selectedParkId});
       } else if (appState.currentScreen === "overview") {
         navigateTo("parks");
       }
-    });
-
-    elParkSearchInput.addEventListener("input", (e) => {
-      appState.searchQuery = e.target.value;
-      elSearchClearBtn.style.display = appState.searchQuery ? "block" : "none";
-      renderParksList();
-    });
-
-    elSearchClearBtn.addEventListener("click", () => {
-      appState.searchQuery = "";
-      elParkSearchInput.value = "";
-      elSearchClearBtn.style.display = "none";
-      renderParksList();
-      elParkSearchInput.focus();
     });
 
     elBtnSaveFeature.addEventListener("click", saveCurrentFeature);
@@ -929,7 +873,6 @@
     elBtnCopyReport.addEventListener("click", copyReportToClipboard);
     elBtnFinishSurvey.addEventListener("click", finishAndClosePark);
 
-    elBtnSettingsOpen.addEventListener("click", openSettingsModal);
     elBtnCloseSettingsModal.addEventListener("click", () => {
       closeModal(elModalSettings);
     });

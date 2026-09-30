@@ -7,40 +7,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Örebro lekplatskoll</title>
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 
   <div class="app-container">
     
-    <!-- Fast toppheader -->
-    <header class="app-header">
-      <div class="header-top">
-        <button id="btn-header-back" class="icon-btn" style="visibility: hidden;" aria-label="Tillbaka">
-          ←
-        </button>
-        <div class="header-title-group">
-          <div style="min-width:0;">
-            <div id="header-main-title" class="header-title">Lekplatskontroll</div>
-            <div id="header-sub-title" class="header-subtitle">Läser lekplatser…</div>
-          </div>
-        </div>
-        <button id="btn-settings-open" class="icon-btn" aria-label="Inställningar">
-          ⚙️
-        </button>
-      </div>
-
-      <!-- Förloppsindikator -->
-      <div id="header-progress" class="header-progress-wrap" style="display: none;">
-        <div class="progress-info">
-          <span id="progress-text">0 av 0 klara</span>
-          <span id="progress-percent">0%</span>
-        </div>
-        <div class="progress-track">
-          <div id="progress-fill" class="progress-fill"></div>
-        </div>
-      </div>
-    </header>
+    <nav id="navigation-bar" class="safe-area-strip main-page" aria-label="Navigering">
+      <button id="btn-back" class="back-button" aria-label="Tillbaka" hidden>←</button>
+      <div id="navigation-title" class="navigation-title"></div>
+    </nav>
 
     <!-- Huvudinnehåll -->
     <main class="app-content">
@@ -54,22 +30,13 @@
 
         <!-- Val av besiktningsman -->
         <div class="inspector-bar">
-          <label class="inspector-label" for="select-inspector">
+          <label class="inspector-label" for="input-inspector">
             <span>👤</span>
             <span>Besiktningsman:</span>
           </label>
-          <select id="select-inspector" class="inspector-select">
-            <option value="Lasse">Lasse</option>
-            <option value="Abdi">Abdi</option>
-          </select>
+          <input type="text" id="input-inspector" class="inspector-input" autocomplete="name" placeholder="Namn">
         </div>
 
-        <!-- Sökfält -->
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" aria-label="Sök lekplatser" id="input-park-search" class="search-input" placeholder="Sök lekplatser..." autocomplete="off">
-          <button id="btn-search-clear" class="search-clear" aria-label="Rensa sökning">×</button>
-        </div>
 
         <!-- Snabbstatistik -->
         <div class="stats-banner">
@@ -96,7 +63,6 @@
       <!-- SKÄRM 2: Översikt över lekplats -->
       <section id="screen-park-overview" class="screen">
         <div class="park-summary-card">
-          <h2 id="overview-park-name" class="park-summary-title">Stadsparkens lekplats</h2>
           <div id="overview-park-meta" class="park-summary-address">Centrum • Storgatan 12</div>
           <div class="feature-instruction">
             <span id="overview-badge" class="badge badge-pending">Ej påbörjad</span>
@@ -225,6 +191,6 @@
   <script src="parks-data.js"></script>
   <script src="vendor/xlsx.mini.min.js"></script>
   <script src="workbook-data.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>

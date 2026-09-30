@@ -2,7 +2,7 @@
 
 En statisk webbapp för kontroll av lekplatser, anpassad för mobiltelefoner.
 Prototypen innehåller fyra exempellekplatser, element och kontrollistor från Excel
-samt val av besiktningsman (Lasse eller Abdi).
+samt ett fritextfält för besiktningsmannens namn. Namnet sparas i webbläsaren.
 
 ## Konfiguration i Excel
 
@@ -68,7 +68,7 @@ räknas som klart först när alla kontroller är besvarade, varje anmärkning h
 en beskrivning och formuläret har sparats.
 
 Besiktningsmannen registreras vid det första svaret. Rapportens datum är
-tidpunkten för den senaste ändringen av kontrollen. Om du byter besiktningsman
+tidpunkten för den senaste ändringen av kontrollen. Om du ändrar besiktningsmannens namn
 gäller valet för nya kontroller. Poster som saknar besiktningsman märks med
 att uppgiften inte är registrerad.
 
