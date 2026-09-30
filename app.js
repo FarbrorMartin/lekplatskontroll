@@ -49,8 +49,6 @@
   const elBtnSendReport = document.getElementById("btn-send-report");
   const elBtnClosePark = document.getElementById("btn-close-park");
 
-  const elFormFeatureName = document.getElementById("form-feature-name");
-  const elFormFeatureDesc = document.getElementById("form-feature-desc");
   const elControlPointsContainer = document.getElementById("control-points-container");
   const elBarFeatureForm = document.getElementById("bar-feature-form");
   const elBtnSaveFeature = document.getElementById("btn-save-feature");
@@ -342,11 +340,11 @@
 
       elHeaderBack.style.visibility = "visible";
       elHeaderMainTitle.textContent = park.name;
-      elHeaderSubTitle.textContent = `${park.district} • ${park.address}`;
+      elHeaderSubTitle.textContent = [park.district, park.address].filter(Boolean).join(' · ') || `${park.featureIds.length} element`;
 
       const prog = calculateParkProgress(park.id);
       elHeaderProgress.style.display = "block";
-      elProgressText.textContent = `${prog.completed} av ${prog.total} delar kontrollerade`;
+      elProgressText.textContent = `${prog.completed} av ${prog.total} klara`;
       elProgressPercent.textContent = `${prog.percent}%`;
       elProgressFill.style.width = `${prog.percent}%`;
 
@@ -407,7 +405,7 @@
       let badgeHtml = "";
       if (prog.completed === prog.total) {
         if (prog.issues > 0) {
-          badgeHtml = `<span class="badge badge-issues">${survey.status === 'reported' ? 'Skickad · ' : ''}⚠ ${prog.issues} defekt${prog.issues > 1 ? 'er' : ''}</span>`;
+          badgeHtml = `<span class="badge badge-issues">${survey.status === 'reported' ? 'Skickad · ' : ''}⚠ ${prog.issues} anmärkning${prog.issues > 1 ? 'ar' : ''}</span>`;
         } else {
           badgeHtml = `<span class="badge badge-ok">${survey.status === 'reported' ? 'Rapport skickad' : 'Kontroll klar (OK)'}</span>`;
         }
@@ -422,9 +420,8 @@
           <div class="park-card-info">
             <div class="park-name">${escapeHtml(park.name)}</div>
             <div class="park-meta">
-              <span>📍 ${escapeHtml(park.district)}</span>
-              <span>•</span>
-              <span>${park.featureIds.length} områden</span>
+              ${park.district ? `<span>📍 ${escapeHtml(park.district)}</span><span>•</span>` : ''}
+              <span>${park.featureIds.length} element</span>
             </div>
           </div>
           ${badgeHtml}
@@ -446,17 +443,16 @@
   // --- SKÄRM 2: LEKPLATSÖVERSIKT ---
   function renderParkOverview(park) {
     elOverviewParkName.textContent = park.name;
-    elOverviewParkMeta.textContent = `${park.district} • ${park.address}`;
 
     const prog = calculateParkProgress(park.id);
     const survey = getParkSurvey(park.id);
 
-    elOverviewParkMeta.textContent = `${park.district} • ${park.address} · Besiktningsman: ${survey.inspectorName || (survey.lastUpdated ? 'Ej registrerad (äldre kontroll)' : appState.settings.inspectorName)}`;
+    elOverviewParkMeta.textContent = [...[park.district, park.address].filter(Boolean), `Besiktningsman: ${survey.inspectorName || (survey.lastUpdated ? 'Ej registrerad (äldre kontroll)' : appState.settings.inspectorName)}`].join(' · ');
 
     if (prog.completed === prog.total) {
       if (prog.issues > 0) {
         elOverviewBadge.className = "badge badge-issues";
-        elOverviewBadge.textContent = `${survey.status === "reported" ? "Rapport skickad" : "Kontroll klar"} (${prog.issues} defekter)`;
+        elOverviewBadge.textContent = `${survey.status === "reported" ? "Rapport skickad" : "Kontroll klar"} (${prog.issues} anmärkningar)`;
       } else {
         elOverviewBadge.className = "badge badge-ok";
         elOverviewBadge.textContent = survey.status === "reported" ? "Rapport skickad" : "Kontroll klar (Allt OK)";
@@ -471,10 +467,10 @@
 
     if (prog.completed === prog.total && prog.total > 0) {
       elBtnSendReport.disabled = false;
-      elBtnSendReport.innerHTML = `✉️ Skicka besiktningsrapport (${prog.issues > 0 ? prog.issues + ' defekter' : 'Allt OK'})`;
+      elBtnSendReport.innerHTML = `✉️ Skicka rapport`;
     } else {
       elBtnSendReport.disabled = true;
-      elBtnSendReport.innerHTML = `✉️ Kontrollera alla områden (${prog.completed}/${prog.total})`;
+      elBtnSendReport.innerHTML = `✉️ Skicka rapport`;
     }
 
     elFeaturesListContainer.innerHTML = park.featureIds.map(fId => {
@@ -490,9 +486,9 @@
         statusBadge = `<span class="badge badge-ok">✓ Allt OK</span>`;
       } else if (featStat.status === "issue") {
         cardClass = "done-issue";
-        statusBadge = `<span class="badge badge-issues">⚠ ${featStat.issuesCount} defekt${featStat.issuesCount > 1 ? 'er' : ''}</span>`;
+        statusBadge = `<span class="badge badge-issues">⚠ ${featStat.issuesCount} anmärkning${featStat.issuesCount > 1 ? 'ar' : ''}</span>`;
       } else {
-        statusBadge = `<span class="badge badge-pending">Tryck för att kontrollera</span>`;
+        statusBadge = `<span class="badge badge-pending">Ej klar</span>`;
       }
 
       return `
@@ -504,10 +500,9 @@
             </div>
             ${statusBadge}
           </div>
-          <div class="feature-card-desc">${escapeHtml(featType.description)}</div>
           <div class="feature-card-footer">
-            <span>${featType.points.length} kontrollpunkter att gå igenom</span>
-            <span>Öppna formulär →</span>
+            <span>${featType.points.length} ${featType.points.length === 1 ? 'kontroll' : 'kontroller'}</span>
+            <span aria-hidden="true">→</span>
           </div>
         </div>
       `;
@@ -526,8 +521,6 @@
 
   // --- SKÄRM 3: KONTROLLPUNKTSFORMULÄR ---
   function renderFeatureForm(park, featureType) {
-    elFormFeatureName.innerHTML = `<span>${featureType.icon}</span><span>${escapeHtml(featureType.name)}</span>`;
-    elFormFeatureDesc.textContent = featureType.description;
 
     const parkSurvey = getParkSurvey(park.id);
     const existingData = parkSurvey.features[featureType.id];
@@ -555,18 +548,18 @@
 
       return `
         <div class="control-point-card ${cardStateClass}" id="card-point-${idx}">
-          <div class="point-number">Kontrollpunkt ${idx + 1} av ${featureType.points.length}</div>
+          <div class="point-number">Kontroll ${idx + 1} av ${featureType.points.length}</div>
           <div class="point-text">${escapeHtml(pointText)}</div>
           <div class="toggle-group">
             <button type="button" class="toggle-btn btn-ok ${isOk ? 'selected' : ''}" data-idx="${idx}" data-val="ok" aria-pressed="${isOk}">
               <span>✓</span> OK
             </button>
             <button type="button" class="toggle-btn btn-issue ${isIssue ? 'selected' : ''}" data-idx="${idx}" data-val="issue" aria-pressed="${isIssue}">
-              <span>⚠</span> DEFEKT
+              <span>⚠</span> ANMÄRKNING
             </button>
           </div>
           <div class="defect-box ${isIssue ? 'visible' : ''}" id="defect-box-${idx}">
-            <label class="defect-label" for="defect-text-${idx}">Beskriv upptäckt defekt / problem:</label>
+            <label class="defect-label" for="defect-text-${idx}">Beskriv anmärkningen:</label>
             <textarea id="defect-text-${idx}" class="defect-textarea" data-idx="${idx}" placeholder="t.ex. Lös bult, 3 cm för hög kant, trasig bräda...">${escapeHtml(ans.note)}</textarea>
           </div>
         </div>
@@ -644,7 +637,7 @@
     }
 
     if (missingNotesCount > 0) {
-      showToast('Beskriv varje defekt innan du sparar.');
+      showToast('Beskriv varje anmärkning innan du sparar.');
       const idx = Object.keys(currentFormAnswers).find(i => currentFormAnswers[i].status === 'issue' && !currentFormAnswers[i].note.trim());
       document.getElementById(`defect-text-${idx}`).focus();
       return;
@@ -682,11 +675,11 @@
     let lines = [];
     lines.push("LEKPLATSKONTROLL - BESIKTNINGSRAPPORT");
     lines.push(`Lekplats: ${park.name}`);
-    lines.push(`Område: ${park.district}`);
-    lines.push(`Adress: ${park.address}`);
+    if (park.district) lines.push(`Område: ${park.district}`);
+    if (park.address) lines.push(`Adress: ${park.address}`);
     lines.push(`Datum: ${formattedDate}`);
     lines.push(`Besiktningsman: ${parkSurvey.inspectorName || "Ej registrerad (äldre kontroll)"}`);
-    lines.push(`Status: ${prog.issues === 0 ? "Allt OK" : `${prog.issues} defekt(er) upptäckta`}`);
+    lines.push(`Status: ${prog.issues === 0 ? "Allt OK" : `${prog.issues} anmärkning(ar) upptäckta`}`);
     lines.push("");
 
     let problemsFound = [];
@@ -700,10 +693,10 @@
       if (featData && featData.points) {
         featData.points.forEach((pt) => {
           if (pt.status === "ok") {
-            lines.push(`OK         •  ${pt.text}`);
+            lines.push(`OK             •  ${pt.text}`);
           } else if (pt.status === 'issue') {
-            const desc = pt.note && pt.note.trim() ? pt.note.trim() : "Defekt noterad (ingen beskrivning angiven)";
-            lines.push(`DEFEKT     •  ${pt.text}: ${desc}`);
+            const desc = pt.note && pt.note.trim() ? pt.note.trim() : "Anmärkning noterad (ingen beskrivning angiven)";
+            lines.push(`ANMÄRKNING      •  ${pt.text}: ${desc}`);
             problemsFound.push(`${featType.name} - ${pt.text}: ${desc}`);
           } else {
             lines.push(`EJ KONTROLLERAD     •  ${pt.text}`);
@@ -715,12 +708,12 @@
       lines.push("");
     });
 
-    lines.push("SAMMANFATTNING AV DEFEKTER");
+    lines.push("SAMMANFATTNING AV ANMÄRKNINGAR");
     if (prog.completed !== prog.total) {
       lines.push('Kontrollen är ofullständig.');
     }
     if (problemsFound.length === 0 && prog.completed === prog.total) {
-      lines.push("Inga defekter upptäckta. All utrustning i gott skick.");
+      lines.push("Inga anmärkningar upptäckta. All utrustning i gott skick.");
     } else {
       problemsFound.forEach((prob, idx) => {
         lines.push(`${idx + 1}. ${prob}`);
@@ -738,7 +731,7 @@
     if (!prog.total || prog.completed !== prog.total) return;
     const reportText = generateReportText(park);
     const formattedDate = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
-    const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' defekter'}) - ${formattedDate}`;
+    const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' anmärkningar'}) - ${formattedDate}`;
     const recipient = appState.settings.recipientEmail;
 
     elReportToDisplay.textContent = recipient;
@@ -748,10 +741,7 @@
     elModalReportSummary.className = prog.issues > 0 ? "report-summary-box has-issues" : "report-summary-box";
     elModalReportSummary.innerHTML = `
       <div style="font-weight: 700; color: ${prog.issues > 0 ? '#991b1b' : '#166534'}; margin-bottom: 4px;">
-        ${prog.issues > 0 ? `⚠ ${prog.issues} defekt${prog.issues > 1 ? 'er' : ''} upptäckta` : `✓ Alla ${prog.total} delar godkända utan anmärkning`}
-      </div>
-      <div style="font-size: 0.85rem; color: #475569;">
-        Klar att skickas till drift- och underhållsavdelningen.
+        ${prog.issues > 0 ? `⚠ ${prog.issues} anmärkning${prog.issues > 1 ? 'ar' : ''}` : `✓ Allt OK`}
       </div>
     `;
 
@@ -765,7 +755,7 @@
     const prog = calculateParkProgress(park.id);
     const reportText = generateReportText(park);
     const formattedDate = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
-    const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' defekter'}) - ${formattedDate}`;
+    const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' anmärkningar'}) - ${formattedDate}`;
     const recipient = appState.settings.recipientEmail;
 
     const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(reportText)}`;
@@ -960,7 +950,7 @@
       await loadConfiguration();
       init();
     } catch (error) {
-      document.getElementById('loading-status').textContent = `Kunde inte läsa konfigurationen: ${error.message} Kontrollera CSV-filerna och ladda om sidan.`;
+      document.getElementById('loading-status').textContent = `Kunde inte läsa konfigurationen: ${error.message} Kontrollera Excel-filen och ladda om sidan.`;
       return;
     }
     document.getElementById('loading-status').hidden = true;

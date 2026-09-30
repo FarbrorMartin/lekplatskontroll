@@ -1,28 +1,47 @@
 ﻿# Lekplatskontroll
 
 Static Swedish playground inspection prototype with four dummy playgrounds,
-CSV-defined feature types and checklists, and inspector selection (Lasse or Abdi).
+Excel-defined elements and checklists, and inspector selection (Lasse or Abdi).
 
 ## Excel configuration
 
-Excel is the master. Export the two matrix sheets as CSV UTF-8 and replace:
+Excel is the master. Edit and save **`data/lekplatskontroll.xlsx`** directly, then
+publish the updated file with the static app. No CSV export or JSON conversion
+is needed. The workbook contains two tabs:
 
-- `data/lekplatser.csv`: `Id;Lekplats;Område;Adress` followed by a column for each feature type. Område and Adress are optional.
-- `data/kontrollpunkter.csv`: `Id;Kontrollpunkt` followed by the same feature type columns (column order may differ).
+- **Lekplatsmatris**: `Lekplats`, then a column for each element. Optional `Område` and `Adress` columns may also be included. Mark assignments with X or leave cells blank. No ID column is needed.
+- **Element**: element names in row 1, then a list of checks down each column. Each element has its own checklist; shared wording can be repeated in different columns. Blank cells are skipped, and the top-to-bottom order defines the checklist order.
 
-Use X (uppercase or lowercase) for assignments and blank cells for everything
-else. Both comma and semicolon separators are accepted. Quoted cells, embedded
-newlines, Swedish letters, and Excel's UTF-8 BOM are supported. The app reports
-invalid markers, duplicate IDs/names, mismatched feature types, and empty forms.
-Question row order defines checklist order.
+Use X (uppercase or lowercase) only in Lekplatsmatris. In Element, write the
+actual checks. Lists may have different lengths. The sample names, checks and
+Xs are examples to replace with the real inventory. Tab order
+does not matter, but keep these tab names and row 1 column headings. Formatting
+can be changed freely; trailing formatted empty rows/columns are ignored.
+The app reports missing tabs, invalid markers, duplicate names, mismatched
+elements, empty checklists, duplicate checks within one element, and Excel cell
+errors. Every playground needs at least one assigned element, and every element
+needs at least one check.
 
-Keep IDs stable when changing playground names or check wording. Feature type
-names currently serve as their identity; renaming a feature type creates a new
-type for subsequent inspections. Started inspections retain a copy of their
-playground assignments and questions until a new inspection is started.
+Add new playgrounds as rows with a unique name. Add checks directly below the
+element heading; checks do not need IDs. To add an element, add a column with the
+same heading in both tabs, write its checks, and fill its playground assignments.
+Save as `.xlsx`, not legacy `.xls`.
 
-The dummy types are Gångbro, Spång, Skulptur, and Lekhus. Publish both CSV files
-together. A server is required; opening index.html directly cannot fetch the CSVs.
+Playground names identify saved inspections. Sorting the workbook does not affect
+saved progress; renaming a playground creates a new playground entry.
+Element names serve as their identity; renaming an element creates a new element for subsequent
+inspections. Started inspections retain a copy of their playground assignments
+and questions, so edits or reordering in Excel affect new inspections only.
+
+The dummy types are Gångbro, Spång, Skulptur, and Lekhus. A server is required;
+opening index.html directly cannot fetch the workbook. The app reads stored cell
+values, not formula calculations; if formulas are used, recalculate and save the
+workbook in Excel before publishing.
+
+The SheetJS mini reader (0.20.3, Apache 2.0) is included in `vendor/`. It is
+279,523 bytes uncompressed, approximately 86,859 bytes gzipped. No npm install,
+runtime CDN, build command, or backend is required for hosting on GitHub Pages,
+Firebase Hosting, or another static host.
 
 ## Run
 
@@ -53,6 +72,6 @@ Sending email still requires an email client and connectivity; long mailto bodie
 
 Run `node test-app.cjs` for regression checks of draft recovery, attribution, required descriptions, safe text rendering, report history, and storage errors. Run `node --check app.js` and `node --check sw.js` for syntax checks.
 
-Run `node test-csv.cjs` for matrix conversion and CSV parsing/validation checks.
+Run `node test-workbook.cjs` for real XLSX reading and matrix validation checks.
 
 The automated checks use a simulated DOM; phone layout and native email handoff need device testing.

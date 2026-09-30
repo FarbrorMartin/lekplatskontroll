@@ -33,7 +33,7 @@
       <!-- Förloppsindikator -->
       <div id="header-progress" class="header-progress-wrap" style="display: none;">
         <div class="progress-info">
-          <span id="progress-text">0 av 0 områden kontrollerade</span>
+          <span id="progress-text">0 av 0 klara</span>
           <span id="progress-percent">0%</span>
         </div>
         <div class="progress-track">
@@ -80,7 +80,7 @@
           </div>
           <div class="stat-chip">
             <div id="stat-issues" class="stat-number" style="color: #dc2626;">0</div>
-            <div class="stat-label">Defekter</div>
+            <div class="stat-label">Anmärkningar</div>
           </div>
         </div>
 
@@ -96,7 +96,6 @@
           <h2 id="overview-park-name" class="park-summary-title">Stadsparkens lekplats</h2>
           <div id="overview-park-meta" class="park-summary-address">Centrum • Storgatan 12</div>
           <div class="feature-instruction">
-            <span>Områden att kontrollera</span>
             <span id="overview-badge" class="badge badge-pending">Ej påbörjad</span>
           </div>
         </div>
@@ -112,16 +111,6 @@
 
       <!-- SKÄRM 3: Formulär för kontrollpunkter -->
       <section id="screen-feature-form" class="screen">
-        <div class="feature-form-header-card">
-          <div id="form-feature-name" class="feature-form-title">
-            <span>🛝</span>
-            <span>Lekplatsutrustning</span>
-          </div>
-          <div id="form-feature-desc" class="feature-form-desc">
-            Kontrollera bärande delar, fästelement och säkerhetsavstånd.
-          </div>
-        </div>
-
         <div id="control-points-container" class="control-points-list">
           <!-- Genereras dynamiskt via app.js -->
         </div>
@@ -134,7 +123,7 @@
     <!-- Bottenrad för lekplatsöversikten -->
     <div id="bar-park-overview" class="bottom-bar" style="display: none;">
       <button id="btn-send-report" class="primary-btn btn-success" disabled>
-        ✉️ Skicka besiktningsrapport
+        ✉️ Skicka rapport
       </button>
       <button id="btn-close-park" class="secondary-btn">
         Stäng lekplats
@@ -144,7 +133,7 @@
     <!-- Bottenrad för kontrollpunktsformuläret -->
     <div id="bar-feature-form" class="bottom-bar" style="display: none;">
       <button id="btn-save-feature" class="primary-btn">
-        ✓ Spara & återgå till lekplatsen
+        ✓ Spara
       </button>
     </div>
 
@@ -154,7 +143,7 @@
   <div id="modal-report" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Besiktningsrapport">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">Besiktningsrapport klar</h3>
+        <h3 class="modal-title">Rapport</h3>
         <button id="btn-close-report-modal" class="icon-btn" aria-label="Stäng rapport" style="color: #64748b; background: none; font-size: 1.5rem;">✕</button>
       </div>
       <div class="modal-body">
@@ -163,7 +152,7 @@
         </div>
 
         <div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 6px;">
-          FÖRHANDSVALD E-POST:
+          E-POST:
         </div>
         <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 12px; line-height: 1.4;">
           <strong>Till:</strong> <span id="report-to-display"></span><br>
@@ -201,7 +190,6 @@
         <div class="settings-field">
           <label class="settings-label" for="setting-recipient-email">Mottagande e-postadress</label>
           <input type="email" required id="setting-recipient-email" class="settings-input" placeholder="t.ex. drift@kommun.se">
-          <div class="settings-help">Besiktningsrapporter adresseras automatiskt till denna e-post.</div>
         </div>
 
         <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
@@ -232,7 +220,8 @@
 
   <!-- Skript -->
   <script src="parks-data.js"></script>
-  <script src="csv-data.js"></script>
+  <script src="vendor/xlsx.mini.min.js"></script>
+  <script src="workbook-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
