@@ -570,7 +570,7 @@
     lines.push(`Address: ${park.address}`);
     lines.push(`Date: ${formattedDate}`);
     lines.push(`Inspector: ${appState.settings.inspectorName}`);
-    lines.push(`Status: ${prog.issues === 0 ? "All OK" : `${prog.issues} problem(s) encountered`}`);
+    lines.push(`Status: ${prog.issues === 0 ? "All OK" : `${prog.issues} defect(s) encountered`}`);
     lines.push("");
 
     let problemsFound = [];
@@ -584,11 +584,11 @@
       if (featData && featData.points) {
         featData.points.forEach((pt) => {
           if (pt.status === "ok") {
-            lines.push(`${pt.text}: OK`);
+            lines.push(`OK     • ${pt.text}`);
           } else {
-            const desc = pt.note && pt.note.trim() ? pt.note.trim() : "Problem reported (no details entered)";
-            lines.push(`${pt.text}: ${desc}`);
-            problemsFound.push(`${featType.name}: ${desc} (${pt.text})`);
+            const desc = pt.note && pt.note.trim() ? pt.note.trim() : "Defect reported (no details entered)";
+            lines.push(`DEFECT • ${pt.text}: ${desc}`);
+            problemsFound.push(`${featType.name} - ${pt.text}: ${desc}`);
           }
         });
       } else {
