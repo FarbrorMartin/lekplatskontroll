@@ -183,6 +183,23 @@ body {
 }
 
 /* Inspector Selection Bar */
+.nature-banner {
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #faf7ee;
+}
+
+.nature-banner h1 {
+  line-height: 0;
+}
+
+.nature-banner img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .inspector-bar {
   background: #ffffff;
   border-radius: var(--radius-md);
@@ -280,6 +297,7 @@ body {
 
 .stat-chip {
   flex: 1;
+  min-width: 0;
   background: #ffffff;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
@@ -295,6 +313,7 @@ body {
 }
 
 .stat-label {
+  overflow-wrap: anywhere;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -302,6 +321,11 @@ body {
 }
 
 /* Park Cards List */
+@media (max-width: 360px) {
+  .stat-chip { padding: 10px 4px; }
+  .stat-label { font-size: 0.6rem; letter-spacing: 0; }
+}
+
 .park-list {
   display: flex;
   flex-direction: column;

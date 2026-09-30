@@ -1,77 +1,109 @@
 ﻿# Lekplatskontroll
 
-Static Swedish playground inspection prototype with four dummy playgrounds,
-Excel-defined elements and checklists, and inspector selection (Lasse or Abdi).
+En statisk webbapp för kontroll av lekplatser, anpassad för mobiltelefoner.
+Prototypen innehåller fyra exempellekplatser, element och kontrollistor från Excel
+samt val av besiktningsman (Lasse eller Abdi).
 
-## Excel configuration
+## Konfiguration i Excel
 
-Excel is the master. Edit and save **`data/lekplatskontroll.xlsx`** directly, then
-publish the updated file with the static app. No CSV export or JSON conversion
-is needed. The workbook contains two tabs:
+Excel-filen är huvudunderlaget. Redigera och spara **`data/lekplatskontroll.xlsx`**
+direkt och publicera den uppdaterade filen tillsammans med appen. Ingen export
+till CSV eller konvertering till JSON behövs. Arbetsboken har två flikar:
 
-- **Lekplatsmatris**: `Lekplats`, then a column for each element. Optional `Område` and `Adress` columns may also be included. Mark assignments with X or leave cells blank. No ID column is needed.
-- **Element**: element names in row 1, then a list of checks down each column. Each element has its own checklist; shared wording can be repeated in different columns. Blank cells are skipped, and the top-to-bottom order defines the checklist order.
+- **Lekplatsmatris**: kolumnen `Lekplats`, följd av en kolumn för varje element. Kolumnerna `Område` och `Adress` kan också läggas till. Markera med X vilka element som finns på varje lekplats och lämna övriga celler tomma. Ingen ID-kolumn behövs.
+- **Element**: elementens namn på rad 1 och en lista med kontroller under varje namn. Varje element har en egen kontrollista. Samma formulering kan användas i flera kolumner. Tomma celler hoppas över och kontrollerna visas i ordning uppifrån och ned.
 
-Use X (uppercase or lowercase) only in Lekplatsmatris. In Element, write the
-actual checks. Lists may have different lengths. The sample names, checks and
-Xs are examples to replace with the real inventory. Tab order
-does not matter, but keep these tab names and row 1 column headings. Formatting
-can be changed freely; trailing formatted empty rows/columns are ignored.
-The app reports missing tabs, invalid markers, duplicate names, mismatched
-elements, empty checklists, duplicate checks within one element, and Excel cell
-errors. Every playground needs at least one assigned element, and every element
-needs at least one check.
+Använd X (stor eller liten bokstav) endast i Lekplatsmatris. I Element skriver du
+själva kontrollerna. Listorna får vara olika långa. Ersätt exempelnamnen,
+kontrollerna och X-markeringarna med det verkliga underlaget.
+Flikarnas ordning spelar ingen roll, men behåll fliknamnen och kolumnrubrikerna
+på rad 1. Formateringen kan ändras fritt. Tomma formaterade rader och kolumner
+efter innehållet ignoreras.
+Appen visar fel om flikar saknas, markeringar är ogiltiga, namn är dubblerade,
+element inte stämmer överens mellan flikarna, kontrollistor är tomma, samma
+kontroll förekommer flera gånger inom ett element eller Excel-celler innehåller
+fel. Varje lekplats måste ha minst ett element och varje element minst en kontroll.
 
-Add new playgrounds as rows with a unique name. Add checks directly below the
-element heading; checks do not need IDs. To add an element, add a column with the
-same heading in both tabs, write its checks, and fill its playground assignments.
-Save as `.xlsx`, not legacy `.xls`.
+Lägg till lekplatser som nya rader med unika namn. Lägg till kontroller direkt
+under elementets rubrik; kontroller behöver inga ID:n. För att lägga till ett
+element skapar du en kolumn med samma rubrik i båda flikarna, skriver dess
+kontroller och markerar vilka lekplatser som har elementet.
+Spara som `.xlsx`, inte det äldre formatet `.xls`.
 
-Playground names identify saved inspections. Sorting the workbook does not affect
-saved progress; renaming a playground creates a new playground entry.
-Element names serve as their identity; renaming an element creates a new element for subsequent
-inspections. Started inspections retain a copy of their playground assignments
-and questions, so edits or reordering in Excel affect new inspections only.
+Lekplatsens namn identifierar dess sparade kontroller. Sortering i Excel påverkar
+inte sparade svar, men ett namnbyte gör att lekplatsen behandlas som en ny lekplats.
+Även element identifieras med sina namn; ett namnbyte skapar ett nytt element för
+kommande kontroller. Påbörjade kontroller behåller en kopia av lekplatsens element
+och kontrollistor. Ändringar och omsorteringar i Excel påverkar därför endast nya
+kontroller.
 
-The dummy types are Gångbro, Spång, Skulptur, and Lekhus. A server is required;
-opening index.html directly cannot fetch the workbook. The app reads stored cell
-values, not formula calculations; if formulas are used, recalculate and save the
-workbook in Excel before publishing.
+Exempel på element är Gångbro, Spång, Skulptur och Lekhus. Appen måste köras via
+en webbserver; att öppna `index.html` direkt från datorn fungerar inte eftersom
+Excel-filen då inte kan hämtas. Appen läser sparade cellvärden och beräknar inte
+formler. Om du använder formler måste du låta Excel beräkna dem och spara filen
+innan du publicerar den.
 
-The SheetJS mini reader (0.20.3, Apache 2.0) is included in `vendor/`. It is
-279,523 bytes uncompressed, approximately 86,859 bytes gzipped. No npm install,
-runtime CDN, build command, or backend is required for hosting on GitHub Pages,
-Firebase Hosting, or another static host.
+Excel-läsaren SheetJS mini (0.20.3, Apache 2.0) ingår i `vendor/`. Den är
+279 523 byte okomprimerad och cirka 86 859 byte med gzip-komprimering.
+Ingen npm-installation, extern CDN, byggprocess eller backend behövs för att
+publicera appen på GitHub Pages, Firebase Hosting eller annan statisk webbhosting.
 
-## Run
+## Kör lokalt
 
-Serve this directory with `python -m http.server 8080`, then visit `http://localhost:8080`. For phone testing on the same Wi-Fi, use your computer's IP address. Deploy to an HTTPS static host for offline support on phones.
+Starta en webbserver från appens katalog med `python -m http.server 8080` och
+öppna sedan `http://localhost:8080`. För att testa på en telefon i samma
+Wi-Fi-nätverk använder du datorns IP-adress i stället för localhost.
+Publicera appen via HTTPS för att kunna använda den utan internet på telefoner.
 
-## Saved inspections
+## Sparade kontroller
 
-Browser Back and Forward follow the playground list, playground overview, and
-feature form. Reloading restores the current screen. Returning from a saved form
-uses the existing overview history entry. Back from the main playground list
-can leave the site normally.
+Webbläsarens bakåt- och framåtknappar följer lekplatslistan, lekplatsöversikten
+och elementets formulär. Vid omladdning återställs den aktuella vyn. När ett
+formulär sparas återgår appen till den befintliga översikten i webbläsarhistoriken.
+Bakåt från lekplatslistan kan lämna webbplatsen som vanligt.
 
-Answers and defect notes are saved as drafts in localStorage as they change. Reloading or leaving a form preserves the draft. A feature only counts as completed after saving all answers with descriptions for every defect.
+Svar och beskrivningar av anmärkningar sparas löpande som utkast i localStorage.
+Utkastet finns kvar om du laddar om sidan eller lämnar formuläret. Ett element
+räknas som klart först när alla kontroller är besvarade, varje anmärkning har
+en beskrivning och formuläret har sparats.
 
-The inspector is recorded at the first answer; the report date is the last inspection edit. Changing the inspector dropdown applies to new inspections. Older records without an inspector are explicitly labelled as unrecorded.
+Besiktningsmannen registreras vid det första svaret. Rapportens datum är
+tidpunkten för den senaste ändringen av kontrollen. Om du byter besiktningsman
+gäller valet för nya kontroller. Poster som saknar besiktningsman märks med
+att uppgiften inte är registrerad.
 
-All completed checks make the report available. A playground only counts as reported after the user confirms sending the email. Opening an email client does not verify delivery. Reports can also be copied to the clipboard.
+När alla element är klara blir rapporten tillgänglig. En lekplats räknas som
+rapporterad först när användaren bekräftar att mejlet har skickats. Att öppna
+mejlappen bekräftar inte att mejlet har levererats. Rapporten kan också kopieras
+till urklipp.
 
-Start a new inspection from the playground overview. This archives the previous plain-text report in that playground's history and clears its current answers. History and drafts are local to this browser. Clearing browser data or using the app's reset action removes them.
+En ny kontroll kan startas från lekplatsöversikten. Då sparas den föregående
+rapporten som vanlig text i lekplatsens historik och de aktuella svaren töms.
+Historik och utkast finns endast i den här webbläsaren. De tas bort om du rensar
+webbläsardata eller använder appens återställningsfunktion.
 
-## Offline and email
+## Användning utan internet och rapporter via mejl
 
-On HTTPS (or localhost), a service worker caches the app after the first online visit. Allow installation to finish before relying on offline reopening. Direct file opening and HTTP over a phone's local network do not provide this offline guarantee.
+På HTTPS (eller localhost) sparar en service worker appen i webbläsarens cache
+efter det första besöket med internetanslutning. Låt installationen bli klar
+innan du förlitar dig på att appen kan öppnas utan internet. Detta stöd gäller
+inte när du öppnar filen direkt eller använder HTTP via datorns lokala IP-adress
+på telefonen.
 
-Sending email still requires an email client and connectivity; long mailto bodies should be checked on the actual phones and email clients. The clipboard option remains available if email handoff fails.
+För att skicka mejl behövs fortfarande en mejlapp och internetanslutning.
+Långa rapporter via `mailto:` bör testas på de telefoner och mejlappar som ska
+användas. Om överföringen till mejlappen inte fungerar kan rapporten kopieras
+till urklipp.
 
-## Verification
+## Verifiering
 
-Run `node test-app.cjs` for regression checks of draft recovery, attribution, required descriptions, safe text rendering, report history, and storage errors. Run `node --check app.js` and `node --check sw.js` for syntax checks.
+Kör `node test-app.cjs` för att kontrollera återställning av utkast,
+besiktningsman, obligatoriska beskrivningar, säker visning av text,
+rapporthistorik och hantering av lagringsfel. Kör `node --check app.js` och
+`node --check sw.js` för syntaxkontroll.
 
-Run `node test-workbook.cjs` for real XLSX reading and matrix validation checks.
+Kör `node test-workbook.cjs` för att testa läsning av XLSX-filer och validering
+av Excel-underlaget.
 
-The automated checks use a simulated DOM; phone layout and native email handoff need device testing.
+De automatiska testerna använder en simulerad DOM. Mobilens layout och
+överföringen till den vanliga mejlappen behöver testas på riktiga enheter.
