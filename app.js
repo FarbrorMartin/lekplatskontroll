@@ -77,6 +77,7 @@
   const elToast = document.getElementById("toast");
 
   let currentFormAnswers = {};
+  let storageReadFailed = false;
 
   // --- INITIALISERING ---
   function init() {
@@ -85,6 +86,20 @@
     bindEvents();
     renderParksList();
     updateGlobalStats();
+    elHeaderSubTitle.textContent = `${MUNICIPAL_PARKS.length} kommunala lekplatser`;
+    elParkSearchInput.placeholder = `Sök bland ${MUNICIPAL_PARKS.length} lekplatser...`;
+    const route = window.history.state;
+    if (route && route.app === 'lekplatskontroll') {
+      restoreRoute(route);
+    } else {
+      window.history.replaceState({app: 'lekplatskontroll', screen: 'parks'}, '');
+    }
+    window.addEventListener('popstate', event => {
+      if (event.state && event.state.app === 'lekplatskontroll') restoreRoute(event.state);
+    });
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
   }
 
   // --- LAGRING ---
@@ -92,30 +107,43 @@
     try {
       const savedData = localStorage.getItem(STORAGE_KEY_DATA);
       if (savedData) {
-        appState.surveyData = JSON.parse(savedData);
+        const parsed = JSON.parse(savedData);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid survey data');
+        Object.values(parsed).forEach(survey => {
+          if (!survey || typeof survey.features !== 'object' || !survey.features) throw new Error('Invalid survey');
+        });
+        appState.surveyData = parsed;
       }
       const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
       if (savedSettings) {
-        appState.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
+        const parsed = JSON.parse(savedSettings);
+        appState.settings = { ...DEFAULT_SETTINGS, ...parsed };
+        if (!PRESET_INSPECTORS.includes(appState.settings.inspectorName)) appState.settings.inspectorName = DEFAULT_SETTINGS.inspectorName;
       }
     } catch (e) {
-      console.error("Kunde inte läsa från localStorage", e);
+      storageReadFailed = true;
+      storageWarning('Kunde inte läsa sparad data. Lagringen skrivs inte över. Kontrollera lagringen innan du fortsätter.');
     }
   }
 
   function persistData() {
+    if (storageReadFailed) return false;
     try {
       localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(appState.surveyData));
+      return true;
     } catch (e) {
-      console.error("Kunde inte spara data", e);
+      storageWarning('Kunde inte spara. Behåll sidan öppen och kopiera rapporten.');
+      return false;
     }
   }
 
   function persistSettings() {
     try {
       localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(appState.settings));
+      return true;
     } catch (e) {
-      console.error("Kunde inte spara inställningar", e);
+      storageWarning('Kunde inte spara inställningar.');
+      return false;
     }
   }
 
@@ -130,7 +158,7 @@
 
     elSelectInspector.addEventListener("change", (e) => {
       appState.settings.inspectorName = e.target.value;
-      persistSettings();
+      if (!persistSettings()) return;
       showToast(`Besiktningsman: ${appState.settings.inspectorName}`);
     });
   }
@@ -147,8 +175,48 @@
   }
 
   // --- HJÄLPFUNKTIONER ---
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]));
+  }
+
+  function storageWarning(message) {
+    const warning = document.getElementById('storage-warning');
+    warning.hidden = false;
+    warning.textContent = message;
+  }
+
+  function saveDraft() {
+    const park = getPark(appState.selectedParkId);
+    const type = getFeatureType(park && park.id, appState.selectedFeatureId);
+    if (!park || !type) return;
+    const survey = getParkSurvey(park.id);
+    snapshotSurvey(park, survey);
+    survey.inspectorName ||= appState.settings.inspectorName;
+    survey.startedAt ||= new Date().toISOString();
+    survey.lastUpdated = new Date().toISOString();
+    survey.status = 'in-progress';
+    survey.reportedAt = null;
+    survey.features[type.id] = {completed: false,
+      points: type.points.map((text, idx) => ({id: type.pointIds[idx], text, ...currentFormAnswers[idx]}))};
+    persistData();
+  }
+
+  function reportDate(survey) {
+    return new Date(survey.lastUpdated || survey.startedAt || Date.now());
+  }
+
   function getPark(parkId) {
-    return MUNICIPAL_PARKS.find(p => p.id === parkId);
+    return appState.surveyData[parkId]?.catalog?.park || MUNICIPAL_PARKS.find(p => p.id === parkId);
+  }
+
+  function getFeatureType(parkId, featureId) {
+    return appState.surveyData[parkId]?.catalog?.featureTypes[featureId] || FEATURE_TYPES[featureId];
+  }
+
+  function snapshotSurvey(park, survey) {
+    if (survey.catalog) return;
+    survey.catalog = {park: JSON.parse(JSON.stringify(park)), featureTypes: Object.create(null)};
+    park.featureIds.forEach(id => { survey.catalog.featureTypes[id] = JSON.parse(JSON.stringify(FEATURE_TYPES[id])); });
   }
 
   function getParkSurvey(parkId) {
@@ -165,7 +233,11 @@
   function getFeatureStatus(parkId, featureId) {
     const parkSurvey = getParkSurvey(parkId);
     const featureData = parkSurvey.features[featureId];
-    if (!featureData || !featureData.completed) {
+    const type = getFeatureType(parkId, featureId);
+    const valid = featureData && Array.isArray(featureData.points) && type &&
+      featureData.points.length === type.points.length && featureData.points.every(pt =>
+        pt && (pt.status === 'ok' || (pt.status === 'issue' && typeof pt.note === 'string' && pt.note.trim())));
+    if (!featureData || !featureData.completed || !valid) {
       return { status: "pending", issuesCount: 0 };
     }
     const issuesCount = (featureData.points || []).filter(pt => pt.status === "issue").length;
@@ -206,7 +278,7 @@
     MUNICIPAL_PARKS.forEach(park => {
       const prog = calculateParkProgress(park.id);
       const survey = getParkSurvey(park.id);
-      if (survey.status === "completed" || prog.completed === prog.total) {
+      if (survey.status === "reported") {
         completedParks++;
       }
       totalIssues += prog.issues;
@@ -218,7 +290,25 @@
   }
 
   // --- NAVIGERING MELLAN SKÄRMAR ---
-  function navigateTo(screen, params = {}) {
+  function restoreRoute(route) {
+    document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+      modal.classList.remove('active');
+    });
+    document.querySelector('.app-container').inert = false;
+    navigateTo(route.screen, {parkId: route.parkId, featureId: route.featureId}, false);
+  }
+
+  function navigateTo(screen, params = {}, recordHistory = true) {
+    const parkId = screen === 'parks' ? null : (params.parkId || appState.selectedParkId);
+    const featureId = screen === 'form' ? (params.featureId || appState.selectedFeatureId) : null;
+    const previous = window.history.state;
+    const sameRoute = route => route && route.screen === screen &&
+      (route.parkId || null) === parkId && (route.featureId || null) === featureId;
+    // Returning to the parent consumes the existing entry, preventing back loops.
+    if (recordHistory && previous && sameRoute(previous.parent)) {
+      window.history.back();
+      return;
+    }
     appState.currentScreen = screen;
 
     elScreenParks.classList.remove("active");
@@ -267,7 +357,7 @@
 
     } else if (screen === "form") {
       const park = getPark(params.parkId || appState.selectedParkId);
-      const featureType = FEATURE_TYPES[params.featureId || appState.selectedFeatureId];
+      const featureType = getFeatureType(park && park.id, params.featureId || appState.selectedFeatureId);
       if (!park || !featureType) return navigateTo("overview", { parkId: appState.selectedParkId });
 
       appState.selectedParkId = park.id;
@@ -282,6 +372,11 @@
       elBarFeatureForm.style.display = "flex";
 
       renderFeatureForm(park, featureType);
+    }
+    if (recordHistory && !sameRoute(previous)) {
+      window.history.pushState({app: 'lekplatskontroll', screen: appState.currentScreen,
+        parkId: appState.selectedParkId, featureId: appState.selectedFeatureId,
+        parent: previous && {screen: previous.screen, parkId: previous.parkId, featureId: previous.featureId}}, '');
     }
   }
 
@@ -298,22 +393,23 @@
       elParksListContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">🔍</div>
-          <div class="empty-state-text">Inga lekplatser matchar "${appState.searchQuery}"</div>
+          <div class="empty-state-text">Inga lekplatser matchar "${escapeHtml(appState.searchQuery)}"</div>
         </div>
       `;
       return;
     }
 
     elParksListContainer.innerHTML = filteredParks.map(park => {
+      park = getPark(park.id);
       const prog = calculateParkProgress(park.id);
       const survey = getParkSurvey(park.id);
 
       let badgeHtml = "";
-      if (survey.status === "completed" || prog.completed === prog.total) {
+      if (prog.completed === prog.total) {
         if (prog.issues > 0) {
-          badgeHtml = `<span class="badge badge-issues">⚠ ${prog.issues} defekt${prog.issues > 1 ? 'er' : ''}</span>`;
+          badgeHtml = `<span class="badge badge-issues">${survey.status === 'reported' ? 'Skickad · ' : ''}⚠ ${prog.issues} defekt${prog.issues > 1 ? 'er' : ''}</span>`;
         } else {
-          badgeHtml = `<span class="badge badge-ok">✓ Klar (OK)</span>`;
+          badgeHtml = `<span class="badge badge-ok">${survey.status === 'reported' ? 'Rapport skickad' : 'Kontroll klar (OK)'}</span>`;
         }
       } else if (prog.completed > 0) {
         badgeHtml = `<span class="badge badge-progress">${prog.completed}/${prog.total} Klara</span>`;
@@ -322,11 +418,11 @@
       }
 
       return `
-        <div class="park-card" data-park-id="${park.id}">
+        <div class="park-card" role="button" tabindex="0" data-park-id="${escapeHtml(park.id)}">
           <div class="park-card-info">
-            <div class="park-name">${park.name}</div>
+            <div class="park-name">${escapeHtml(park.name)}</div>
             <div class="park-meta">
-              <span>📍 ${park.district}</span>
+              <span>📍 ${escapeHtml(park.district)}</span>
               <span>•</span>
               <span>${park.featureIds.length} områden</span>
             </div>
@@ -337,6 +433,9 @@
     }).join("");
 
     elParksListContainer.querySelectorAll(".park-card").forEach(card => {
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+      });
       card.addEventListener("click", () => {
         const parkId = card.getAttribute("data-park-id");
         navigateTo("overview", { parkId });
@@ -352,13 +451,15 @@
     const prog = calculateParkProgress(park.id);
     const survey = getParkSurvey(park.id);
 
-    if (survey.status === "completed" || prog.completed === prog.total) {
+    elOverviewParkMeta.textContent = `${park.district} • ${park.address} · Besiktningsman: ${survey.inspectorName || (survey.lastUpdated ? 'Ej registrerad (äldre kontroll)' : appState.settings.inspectorName)}`;
+
+    if (prog.completed === prog.total) {
       if (prog.issues > 0) {
         elOverviewBadge.className = "badge badge-issues";
-        elOverviewBadge.textContent = `Klar (${prog.issues} defekter)`;
+        elOverviewBadge.textContent = `${survey.status === "reported" ? "Rapport skickad" : "Kontroll klar"} (${prog.issues} defekter)`;
       } else {
         elOverviewBadge.className = "badge badge-ok";
-        elOverviewBadge.textContent = "Klar (Allt OK)";
+        elOverviewBadge.textContent = survey.status === "reported" ? "Rapport skickad" : "Kontroll klar (Allt OK)";
       }
     } else if (prog.completed > 0) {
       elOverviewBadge.className = "badge badge-progress";
@@ -377,7 +478,7 @@
     }
 
     elFeaturesListContainer.innerHTML = park.featureIds.map(fId => {
-      const featType = FEATURE_TYPES[fId];
+      const featType = getFeatureType(park.id, fId);
       if (!featType) return "";
 
       const featStat = getFeatureStatus(park.id, fId);
@@ -395,15 +496,15 @@
       }
 
       return `
-        <div class="feature-card ${cardClass}" data-feature-id="${featType.id}">
+        <div class="feature-card ${cardClass}" role="button" tabindex="0" data-feature-id="${escapeHtml(featType.id)}">
           <div class="feature-card-header">
             <div class="feature-card-title">
               <span>${featType.icon}</span>
-              <span>${featType.name}</span>
+              <span>${escapeHtml(featType.name)}</span>
             </div>
             ${statusBadge}
           </div>
-          <div class="feature-card-desc">${featType.description}</div>
+          <div class="feature-card-desc">${escapeHtml(featType.description)}</div>
           <div class="feature-card-footer">
             <span>${featType.points.length} kontrollpunkter att gå igenom</span>
             <span>Öppna formulär →</span>
@@ -413,6 +514,9 @@
     }).join("");
 
     elFeaturesListContainer.querySelectorAll(".feature-card").forEach(card => {
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+      });
       card.addEventListener("click", () => {
         const featureId = card.getAttribute("data-feature-id");
         navigateTo("form", { parkId: park.id, featureId });
@@ -422,7 +526,7 @@
 
   // --- SKÄRM 3: KONTROLLPUNKTSFORMULÄR ---
   function renderFeatureForm(park, featureType) {
-    elFormFeatureName.innerHTML = `<span>${featureType.icon}</span><span>${featureType.name}</span>`;
+    elFormFeatureName.innerHTML = `<span>${featureType.icon}</span><span>${escapeHtml(featureType.name)}</span>`;
     elFormFeatureDesc.textContent = featureType.description;
 
     const parkSurvey = getParkSurvey(park.id);
@@ -452,18 +556,18 @@
       return `
         <div class="control-point-card ${cardStateClass}" id="card-point-${idx}">
           <div class="point-number">Kontrollpunkt ${idx + 1} av ${featureType.points.length}</div>
-          <div class="point-text">${pointText}</div>
+          <div class="point-text">${escapeHtml(pointText)}</div>
           <div class="toggle-group">
-            <button type="button" class="toggle-btn btn-ok ${isOk ? 'selected' : ''}" data-idx="${idx}" data-val="ok">
+            <button type="button" class="toggle-btn btn-ok ${isOk ? 'selected' : ''}" data-idx="${idx}" data-val="ok" aria-pressed="${isOk}">
               <span>✓</span> OK
             </button>
-            <button type="button" class="toggle-btn btn-issue ${isIssue ? 'selected' : ''}" data-idx="${idx}" data-val="issue">
+            <button type="button" class="toggle-btn btn-issue ${isIssue ? 'selected' : ''}" data-idx="${idx}" data-val="issue" aria-pressed="${isIssue}">
               <span>⚠</span> DEFEKT
             </button>
           </div>
           <div class="defect-box ${isIssue ? 'visible' : ''}" id="defect-box-${idx}">
             <label class="defect-label" for="defect-text-${idx}">Beskriv upptäckt defekt / problem:</label>
-            <textarea id="defect-text-${idx}" class="defect-textarea" data-idx="${idx}" placeholder="t.ex. Lös bult, 3 cm för hög kant, trasig bräda...">${ans.note}</textarea>
+            <textarea id="defect-text-${idx}" class="defect-textarea" data-idx="${idx}" placeholder="t.ex. Lös bult, 3 cm för hög kant, trasig bräda...">${escapeHtml(ans.note)}</textarea>
           </div>
         </div>
       `;
@@ -480,6 +584,9 @@
         const textarea = defectBox.querySelector("textarea");
 
         currentFormAnswers[idx].status = val;
+        okBtn.setAttribute('aria-pressed', String(val === 'ok'));
+        issueBtn.setAttribute('aria-pressed', String(val === 'issue'));
+        saveDraft();
 
         if (val === "ok") {
           okBtn.classList.add("selected");
@@ -502,13 +609,14 @@
       tx.addEventListener("input", (e) => {
         const idx = parseInt(tx.getAttribute("data-idx"), 10);
         currentFormAnswers[idx].note = e.target.value;
+        saveDraft();
       });
     });
   }
 
   function saveCurrentFeature() {
     const park = getPark(appState.selectedParkId);
-    const featureType = FEATURE_TYPES[appState.selectedFeatureId];
+    const featureType = getFeatureType(park && park.id, appState.selectedFeatureId);
     if (!park || !featureType) return;
 
     let unansweredCount = 0;
@@ -536,31 +644,37 @@
     }
 
     if (missingNotesCount > 0) {
-      if (!confirm(`Du har markerat ${missingNotesCount} punkt(er) som DEFEKT utan att skriva en förklaring. Vill du spara ändå?`)) {
-        return;
-      }
+      showToast('Beskriv varje defekt innan du sparar.');
+      const idx = Object.keys(currentFormAnswers).find(i => currentFormAnswers[i].status === 'issue' && !currentFormAnswers[i].note.trim());
+      document.getElementById(`defect-text-${idx}`).focus();
+      return;
     }
 
     const parkSurvey = getParkSurvey(park.id);
+    snapshotSurvey(park, parkSurvey);
     parkSurvey.features[featureType.id] = {
       completed: true,
       points: featureType.points.map((pt, idx) => ({
+        id: featureType.pointIds[idx],
         text: pt,
         status: currentFormAnswers[idx].status,
         note: currentFormAnswers[idx].note ? currentFormAnswers[idx].note.trim() : ""
       }))
     };
+    parkSurvey.inspectorName ||= appState.settings.inspectorName;
+    parkSurvey.startedAt ||= new Date().toISOString();
     parkSurvey.status = "in-progress";
+    parkSurvey.reportedAt = null;
     parkSurvey.lastUpdated = new Date().toISOString();
 
-    persistData();
+    if (!persistData()) return;
     showToast(`${featureType.name} har sparats!`);
     navigateTo("overview", { parkId: park.id });
   }
 
   // --- RAPPORTGENERERING & E-POST ---
   function generateReportText(park) {
-    const now = new Date();
+    const now = reportDate(getParkSurvey(park.id));
     const formattedDate = now.toLocaleDateString("sv-SE") + " " + now.toLocaleTimeString("sv-SE", { hour: '2-digit', minute: '2-digit' });
     const prog = calculateParkProgress(park.id);
     const parkSurvey = getParkSurvey(park.id);
@@ -571,14 +685,14 @@
     lines.push(`Område: ${park.district}`);
     lines.push(`Adress: ${park.address}`);
     lines.push(`Datum: ${formattedDate}`);
-    lines.push(`Besiktningsman: ${appState.settings.inspectorName}`);
+    lines.push(`Besiktningsman: ${parkSurvey.inspectorName || "Ej registrerad (äldre kontroll)"}`);
     lines.push(`Status: ${prog.issues === 0 ? "Allt OK" : `${prog.issues} defekt(er) upptäckta`}`);
     lines.push("");
 
     let problemsFound = [];
 
     park.featureIds.forEach((fId) => {
-      const featType = FEATURE_TYPES[fId];
+      const featType = getFeatureType(park.id, fId);
       const featData = parkSurvey.features[fId];
 
       lines.push(featType.name.toUpperCase());
@@ -587,10 +701,12 @@
         featData.points.forEach((pt) => {
           if (pt.status === "ok") {
             lines.push(`OK         •  ${pt.text}`);
-          } else {
+          } else if (pt.status === 'issue') {
             const desc = pt.note && pt.note.trim() ? pt.note.trim() : "Defekt noterad (ingen beskrivning angiven)";
             lines.push(`DEFEKT     •  ${pt.text}: ${desc}`);
             problemsFound.push(`${featType.name} - ${pt.text}: ${desc}`);
+          } else {
+            lines.push(`EJ KONTROLLERAD     •  ${pt.text}`);
           }
         });
       } else {
@@ -600,7 +716,10 @@
     });
 
     lines.push("SAMMANFATTNING AV DEFEKTER");
-    if (problemsFound.length === 0) {
+    if (prog.completed !== prog.total) {
+      lines.push('Kontrollen är ofullständig.');
+    }
+    if (problemsFound.length === 0 && prog.completed === prog.total) {
       lines.push("Inga defekter upptäckta. All utrustning i gott skick.");
     } else {
       problemsFound.forEach((prob, idx) => {
@@ -616,8 +735,9 @@
     if (!park) return;
 
     const prog = calculateParkProgress(park.id);
+    if (!prog.total || prog.completed !== prog.total) return;
     const reportText = generateReportText(park);
-    const formattedDate = new Date().toLocaleDateString("sv-SE");
+    const formattedDate = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
     const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' defekter'}) - ${formattedDate}`;
     const recipient = appState.settings.recipientEmail;
 
@@ -635,7 +755,7 @@
       </div>
     `;
 
-    elModalReport.classList.add("active");
+    openModal(elModalReport);
   }
 
   function triggerEmailDispatch() {
@@ -644,7 +764,7 @@
 
     const prog = calculateParkProgress(park.id);
     const reportText = generateReportText(park);
-    const formattedDate = new Date().toLocaleDateString("sv-SE");
+    const formattedDate = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
     const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' defekter'}) - ${formattedDate}`;
     const recipient = appState.settings.recipientEmail;
 
@@ -679,7 +799,7 @@
     ta.focus();
     ta.select();
     try {
-      document.execCommand("copy");
+      if (!document.execCommand("copy")) throw new Error("Copy failed");
       showToast("Rapporten har kopierats!");
     } catch (err) {
       showToast("Kunde inte kopiera automatiskt.");
@@ -688,44 +808,101 @@
   }
 
   function finishAndClosePark() {
+    const progress = calculateParkProgress(appState.selectedParkId);
+    if (!progress.total || progress.completed !== progress.total) return;
+    if (!confirm('Har du skickat rapporten i e-postklienten? Bekräfta endast om den är skickad.')) return;
     const park = getPark(appState.selectedParkId);
     if (park) {
       const parkSurvey = getParkSurvey(park.id);
-      parkSurvey.status = "completed";
-      persistData();
+      parkSurvey.status = "reported";
+      parkSurvey.reportedAt = new Date().toISOString();
+      if (!persistData()) return;
     }
-    elModalReport.classList.remove("active");
-    showToast("Lekplatsen har markerats som klar!");
+    closeModal(elModalReport);
+    showToast("Rapporten har markerats som skickad!");
     navigateTo("parks");
   }
 
   // --- INSTÄLLNINGAR ---
   function openSettingsModal() {
     elSettingEmail.value = appState.settings.recipientEmail;
-    elModalSettings.classList.add("active");
+    openModal(elModalSettings);
   }
 
   function saveSettings() {
     const email = elSettingEmail.value.trim();
-    if (email) appState.settings.recipientEmail = email;
+    if (!email || !elSettingEmail.checkValidity()) {
+      elSettingEmail.reportValidity();
+      showToast('Ange en giltig e-postadress.');
+      return;
+    }
+    appState.settings.recipientEmail = email;
 
-    persistSettings();
-    elModalSettings.classList.remove("active");
+    if (!persistSettings()) return;
+    closeModal(elModalSettings);
     showToast("Inställningar sparade");
   }
 
   function clearAllData() {
     if (confirm("Är du säker på att du vill nollställa alla besiktningar? Detta går inte att ångra.")) {
       appState.surveyData = {};
-      persistData();
-      elModalSettings.classList.remove("active");
+      if (!persistData()) return;
+      closeModal(elModalSettings);
       showToast("Alla protokoll har nollställts");
       navigateTo("parks");
     }
   }
 
   // --- HÄNDELSEKOPPLINGAR ---
+  let modalOpener = null;
+  function openModal(modal) {
+    showModal(modal);
+  }
+  function showModal(modal) {
+    modalOpener = document.activeElement;
+    modal.classList.add('active');
+    document.querySelector('.app-container').inert = true;
+    modal.querySelector('button, input').focus();
+  }
+  function closeModal(modal) {
+    modal.classList.remove('active');
+    document.querySelector('.app-container').inert = false;
+    if (modalOpener) modalOpener.focus();
+  }
+
+  function startNewSurvey() {
+    const park = getPark(appState.selectedParkId);
+    if (!park || !confirm('Starta en ny kontroll? Den nuvarande kontrollen sparas i historiken.')) return;
+    const previous = getParkSurvey(park.id);
+    appState.surveyData[park.id] = {status: 'not-started', features: {}, lastUpdated: null,
+      history: [...(previous.history || []), {report: generateReportText(park),
+        status: previous.status, reportedAt: previous.reportedAt || null,
+        archivedAt: new Date().toISOString()}]};
+    if (!persistData()) { appState.surveyData[park.id] = previous; return; }
+    navigateTo('overview', {parkId: park.id});
+  }
+
   function bindEvents() {
+    document.getElementById('btn-new-survey').addEventListener('click', startNewSurvey);
+    document.getElementById('btn-history').addEventListener('click', () => {
+      const history = getParkSurvey(appState.selectedParkId).history || [];
+      document.getElementById('history-content').textContent = history.length
+        ? history.map(item => `Arkiverad: ${new Date(item.archivedAt).toLocaleString('sv-SE')}\n${item.report}`).join('\n\n')
+        : 'Inga tidigare kontroller.';
+      openModal(document.getElementById('modal-history'));
+    });
+    document.getElementById('btn-close-history').addEventListener('click', () => closeModal(document.getElementById('modal-history')));
+    document.addEventListener('keydown', e => {
+      const modal = document.querySelector('.modal-overlay.active');
+      if (!modal) return;
+      if (e.key === 'Escape') { closeModal(modal); return; }
+      if (e.key === 'Tab') {
+        const items = [...modal.querySelectorAll('button, input, [tabindex="0"]')].filter(el => !el.disabled);
+        const first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
     elHeaderBack.addEventListener("click", () => {
       if (appState.currentScreen === "form") {
         navigateTo("overview", { parkId: appState.selectedParkId });
@@ -756,7 +933,7 @@
     });
 
     elBtnCloseReportModal.addEventListener("click", () => {
-      elModalReport.classList.remove("active");
+      closeModal(elModalReport);
     });
     elBtnTriggerEmail.addEventListener("click", triggerEmailDispatch);
     elBtnCopyReport.addEventListener("click", copyReportToClipboard);
@@ -764,24 +941,35 @@
 
     elBtnSettingsOpen.addEventListener("click", openSettingsModal);
     elBtnCloseSettingsModal.addEventListener("click", () => {
-      elModalSettings.classList.remove("active");
+      closeModal(elModalSettings);
     });
     elBtnSaveSettings.addEventListener("click", saveSettings);
     elBtnClearAllData.addEventListener("click", clearAllData);
 
-    [elModalReport, elModalSettings].forEach(modal => {
+    [elModalReport, elModalSettings, document.getElementById('modal-history')].forEach(modal => {
       modal.addEventListener("click", (e) => {
         if (e.target === modal) {
-          modal.classList.remove("active");
+          closeModal(modal);
         }
       });
     });
   }
 
+  async function start() {
+    try {
+      await loadConfiguration();
+      init();
+    } catch (error) {
+      document.getElementById('loading-status').textContent = `Kunde inte läsa konfigurationen: ${error.message} Kontrollera CSV-filerna och ladda om sidan.`;
+      return;
+    }
+    document.getElementById('loading-status').hidden = true;
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", start);
   } else {
-    init();
+    start();
   }
 
 })();

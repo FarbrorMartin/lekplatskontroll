@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1b4332">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,7 +22,7 @@
         <div class="header-title-group">
           <div style="min-width:0;">
             <div id="header-main-title" class="header-title">Lekplatskontroll</div>
-            <div id="header-sub-title" class="header-subtitle">25 kommunala lekplatser</div>
+            <div id="header-sub-title" class="header-subtitle">Läser lekplatser…</div>
           </div>
         </div>
         <button id="btn-settings-open" class="icon-btn" aria-label="Inställningar">
@@ -47,6 +47,7 @@
 
       <!-- SKÄRM 1: Välj lekplats -->
       <section id="screen-parks" class="screen active">
+        <p id="loading-status" role="status">Läser checklistor och lekplatser…</p>
 
         <!-- Val av besiktningsman -->
         <div class="inspector-bar">
@@ -63,19 +64,19 @@
         <!-- Sökfält -->
         <div class="search-wrapper">
           <span class="search-icon">🔍</span>
-          <input type="text" id="input-park-search" class="search-input" placeholder="Sök bland 25 lekplatser..." autocomplete="off">
+          <input type="text" aria-label="Sök lekplatser" id="input-park-search" class="search-input" placeholder="Sök lekplatser..." autocomplete="off">
           <button id="btn-search-clear" class="search-clear" aria-label="Rensa sökning">×</button>
         </div>
 
         <!-- Snabbstatistik -->
         <div class="stats-banner">
           <div class="stat-chip">
-            <div id="stat-total" class="stat-number">25</div>
+            <div id="stat-total" class="stat-number">0</div>
             <div class="stat-label">Lekplatser</div>
           </div>
           <div class="stat-chip">
             <div id="stat-completed" class="stat-number">0</div>
-            <div class="stat-label">Klara</div>
+            <div class="stat-label">Rapporter skickade</div>
           </div>
           <div class="stat-chip">
             <div id="stat-issues" class="stat-number" style="color: #dc2626;">0</div>
@@ -100,6 +101,10 @@
           </div>
         </div>
 
+        <div class="survey-actions">
+          <button id="btn-new-survey" class="secondary-btn">Starta ny kontroll</button>
+          <button id="btn-history" class="secondary-btn">Tidigare kontroller</button>
+        </div>
         <div id="features-list-container" class="feature-list">
           <!-- Genereras dynamiskt via app.js -->
         </div>
@@ -146,11 +151,11 @@
   </div>
 
   <!-- MODAL: Förhandsgranskning av rapport & E-post -->
-  <div id="modal-report" class="modal-overlay">
+  <div id="modal-report" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Besiktningsrapport">
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">Besiktningsrapport klar</h3>
-        <button id="btn-close-report-modal" class="icon-btn" style="color: #64748b; background: none; font-size: 1.5rem;">✕</button>
+        <button id="btn-close-report-modal" class="icon-btn" aria-label="Stäng rapport" style="color: #64748b; background: none; font-size: 1.5rem;">✕</button>
       </div>
       <div class="modal-body">
         <div id="modal-report-summary" class="report-summary-box">
@@ -179,23 +184,23 @@
           📋 Kopiera rapporttext
         </button>
         <button id="btn-finish-survey" class="secondary-btn" style="color: #166534; font-weight: 600;">
-          ✓ Markera lekplats som klar
+          ✓ Bekräfta att rapporten är skickad
         </button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: Inställningar -->
-  <div id="modal-settings" class="modal-overlay">
+  <div id="modal-settings" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Inställningar">
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">Inställningar</h3>
-        <button id="btn-close-settings-modal" class="icon-btn" style="color: #64748b; background: none; font-size: 1.5rem;">✕</button>
+        <button id="btn-close-settings-modal" class="icon-btn" aria-label="Stäng inställningar" style="color: #64748b; background: none; font-size: 1.5rem;">✕</button>
       </div>
       <div class="modal-body">
         <div class="settings-field">
           <label class="settings-label" for="setting-recipient-email">Mottagande e-postadress</label>
-          <input type="email" id="setting-recipient-email" class="settings-input" placeholder="t.ex. drift@kommun.se">
+          <input type="email" required id="setting-recipient-email" class="settings-input" placeholder="t.ex. drift@kommun.se">
           <div class="settings-help">Besiktningsrapporter adresseras automatiskt till denna e-post.</div>
         </div>
 
@@ -215,11 +220,19 @@
     </div>
   </div>
 
+  <div id="modal-history" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Tidigare kontroller">
+    <div class="modal-content">
+      <div class="modal-header"><h3>Tidigare kontroller</h3><button id="btn-close-history" class="secondary-btn">Stäng</button></div>
+      <div class="modal-body"><pre id="history-content" class="report-text-preview" tabindex="0"></pre></div>
+    </div>
+  </div>
+  <div id="storage-warning" role="alert" hidden></div>
   <!-- Toast meddelande -->
-  <div id="toast" class="toast">Klart!</div>
+  <div id="toast" class="toast" role="status" aria-live="polite">Klart!</div>
 
   <!-- Skript -->
   <script src="parks-data.js"></script>
+  <script src="csv-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -29,6 +29,12 @@
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+.survey-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+#storage-warning { position: fixed; top: 0; left: 0; right: 0; padding: 12px; background: #fee2e2; color: #991b1b; z-index: 200; }
+.feature-card-header { flex-wrap: wrap; gap: 8px; }
+.toast { white-space: normal; width: max-content; max-width: 90vw; }
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -876,4 +882,15 @@ body {
 
 .empty-state-text {
   font-size: 0.95rem;
+}
+
+.toast {
+  white-space: normal;
+  width: max-content;
+  max-width: 90vw;
+}
+
+#bar-park-overview { flex-direction: column; }
+.app-content:has(#screen-park-overview.active) {
+  padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
 }
