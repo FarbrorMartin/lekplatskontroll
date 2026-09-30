@@ -1,255 +1,257 @@
 /**
- * Municipal Park Survey App - Data Source
- * Contains definitions for 25 municipal parks and 5 feature checklist types.
+ * Lekplatskontroll - Datakälla
+ * Innehåller 25 kommunala lekplatser och 5 kontrollpunktsområden.
  */
+
+const PRESET_INSPECTORS = ["Lasse", "Abdi"];
 
 const FEATURE_TYPES = {
   playground: {
     id: "playground",
-    name: "Playground Equipment",
+    name: "Lekplatsutrustning",
     icon: "🛝",
-    description: "Swings, slides, climbing frames, sandboxes, and safety surfaces.",
+    description: "Gungor, rutschkana, klätterställning, sandlåda och fallunderlag.",
     points: [
-      "All structural parts are in good condition",
-      "There are no screws or fasteners that need to be fixed",
-      "Attachment points are secure and undamaged",
-      "No loose or broken parts",
-      "No need for touch up of painted or coated surfaces"
+      "Alla bärande delar är i gott skick",
+      "Inga skruvar eller fästelement behöver åtgärdas",
+      "Fästpunkter är säkra och oskadade",
+      "Inga lösa eller trasiga delar",
+      "Inget behov av bättring av målade eller behandlade ytor"
     ]
   },
   furniture: {
     id: "furniture",
-    name: "Park Furniture & Amenities",
+    name: "Parkmöbler & utrustning",
     icon: "🪑",
-    description: "Benches, picnic tables, waste bins, bike racks, and information signs.",
+    description: "Bänkar, bord, papperskorgar, cykelställ och informationstavlor.",
     points: [
-      "Wooden slats and frames are sturdy and splinter-free",
-      "Bolts, brackets, and ground mountings are secure",
-      "Trash cans are emptied, liner intact, lid/lock functional",
-      "Park signage and informational boards are clean and legible",
-      "Picnic tables and bicycle racks are level and stable"
+      "Träribbor och stommar är hela och stickfria",
+      "Bultar, fästen och markförankring sitter stadigt",
+      "Papperskorgar tömda, hela och låsbara",
+      "Informationsskyltar och ordningsregler rena och läsbara",
+      "Picknickbord och cykelställ stabila och plana"
     ]
   },
   greenery: {
     id: "greenery",
-    name: "Greenery & Landscaping",
+    name: "Vegetation & träd",
     icon: "🌳",
-    description: "Trees, shrubs, lawns, flowerbeds, and horticultural zones.",
+    description: "Träd, buskage, gräsytor och planteringar kring lekplatsen.",
     points: [
-      "No hazardous deadwood or loose branches overhead",
-      "Pathways and sightlines are clear of encroaching branches",
-      "Lawn is mowed and free of dangerous holes or ruts",
-      "Flowerbeds and planted borders are tended and weed-free",
-      "Hedges and perimeter shrubs are properly trimmed"
+      "Inga farliga torrgrenar eller nedhängande grenar",
+      "Siktlinjer och gångytor fria från sly och grenar",
+      "Gräsytan är klippt och fri från hålor eller snubbelrisker",
+      "Planteringar och sandytor välskötta och ogräsfria",
+      "Häckar och buskar kring lekytan är väl beskurna"
     ]
   },
   lighting: {
     id: "lighting",
-    name: "Lighting & Electrical",
+    name: "Belysning & el",
     icon: "💡",
-    description: "Park lanterns, floodlights, solar bollards, and electrical control boxes.",
+    description: "Lyktstolpar, belysningsarmaturer och elskåp.",
     points: [
-      "All light fixtures and lenses are intact without damage",
-      "Light poles are firmly anchored and aligned vertically",
-      "Electrical junction boxes and inspection doors are locked securely",
-      "No exposed wires, vandalism, or damaged conduits",
-      "Sensors, timers, or emergency call points are functional and undamaged"
+      "Armaturer och skyddsglas hela utan skador",
+      "Stolpar är stadigt förankrade och raka",
+      "Elskåp och serviceluckor är låsta och säkrade",
+      "Inga synliga kablar, vandalism eller skador",
+      "Skymningsrelä eller tidsstyrning fungerar och är intakt"
     ]
   },
   walkways: {
     id: "walkways",
-    name: "Walkways & Fencing",
+    name: "Gångvägar & stängsel",
     icon: "🛤️",
-    description: "Paved paths, gravel tracks, perimeter fencing, handrails, and gates.",
+    description: "Asfaltytor, grusgångar, staket, räcken och grindar.",
     points: [
-      "Pavement and asphalt free of trip hazards, severe cracks, or potholes",
-      "Boundary fences and railings are stable with no gaps or loose sections",
-      "Access gates open smoothly, swing freely, and latch securely",
-      "Curbs, accessibility ramps, and stair treads are non-slip and intact",
-      "Drainage grates and water channels are clear of silt and leaves"
+      "Gångytor jämna utan snubbelkanter, hål eller sprickor",
+      "Staket och räcken stabila utan glapp eller hål",
+      "Grindar öppnas lätt, stängs mjukt och låser/haspar säkert",
+      "Kantstöd, ramper och trappor halkfria och hela",
+      "Dagvattenbrunnar och rännor rensade från löv och grus"
     ]
   }
 };
 
 const MUNICIPAL_PARKS = [
   {
-    id: "park-01",
-    name: "Central Civic Park",
-    district: "Downtown",
-    address: "100 Civic Square",
+    id: "lekplats-01",
+    name: "Stadsparkens lekplats",
+    district: "Centrum",
+    address: "Storgatan 12",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-02",
-    name: "Riverside Promenade",
-    district: "Riverfront",
-    address: "240 Riverwalk Way",
-    featureIds: ["furniture", "greenery", "lighting", "walkways"]
-  },
-  {
-    id: "park-03",
-    name: "Oakwood Grove",
-    district: "North Hills",
-    address: "45 Oakwood Lane",
+    id: "lekplats-02",
+    name: "Årummets lekplats",
+    district: "Centrum / Åpromenaden",
+    address: "Strandvägen 4",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-04",
-    name: "Meadow Green Park",
-    district: "East Suburbs",
-    address: "88 Meadowland Dr",
+    id: "lekplats-03",
+    name: "Ekbackens lekplats",
+    district: "Norra staden",
+    address: "Ekbacksvägen 15",
+    featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
+  },
+  {
+    id: "lekplats-04",
+    name: "Ängslummans temalekplats",
+    district: "Östra stadsdelen",
+    address: "Ängsvägen 22",
     featureIds: ["playground", "furniture", "greenery", "walkways"]
   },
   {
-    id: "park-05",
-    name: "Sunset Ridge Reserve",
-    district: "West Heights",
-    address: "510 Skyline Blvd",
-    featureIds: ["furniture", "greenery", "walkways"]
+    id: "lekplats-05",
+    name: "Solbackens lekplats",
+    district: "Västra höjden",
+    address: "Solbacken 8",
+    featureIds: ["playground", "furniture", "greenery", "walkways"]
   },
   {
-    id: "park-06",
-    name: "Willow Creek Gardens",
-    district: "Valley View",
-    address: "12 Willow Creek Rd",
+    id: "lekplats-06",
+    name: "Bäckparkens lekplats",
+    district: "Dalgången",
+    address: "Bäckstigen 3",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-07",
-    name: "Harbor View Park",
-    district: "Harbor District",
-    address: "3 Maritime Blvd",
-    featureIds: ["furniture", "greenery", "lighting", "walkways"]
+    id: "lekplats-07",
+    name: "Hamnlekplatsen",
+    district: "Hamnområdet",
+    address: "Kajpromenaden 1",
+    featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-08",
-    name: "Pinecrest Community Park",
-    district: "North Hills",
-    address: "310 Pinecrest Ave",
+    id: "lekplats-08",
+    name: "Tallkrogens lekplats",
+    district: "Norra staden",
+    address: "Tallkrogsvägen 45",
     featureIds: ["playground", "furniture", "greenery", "lighting"]
   },
   {
-    id: "park-09",
-    name: "Maplewood Commons",
-    district: "Maplewood",
-    address: "74 Maplewood St",
+    id: "lekplats-09",
+    name: "Lönnalléns lekplats",
+    district: "Lönngården",
+    address: "Lönnallén 18",
     featureIds: ["playground", "furniture", "greenery", "walkways"]
   },
   {
-    id: "park-10",
-    name: "Birchwood Recreation Grounds",
-    district: "East Suburbs",
-    address: "150 Birchwood Rd",
+    id: "lekplats-10",
+    name: "Björkbackens lekplats",
+    district: "Östra stadsdelen",
+    address: "Björkgatan 9",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-11",
-    name: "Elmwood Historic Square",
-    district: "Old Town",
-    address: "12 Heritage Row",
-    featureIds: ["furniture", "greenery", "lighting", "walkways"]
+    id: "lekplats-11",
+    name: "Gamla Stadens lekplats",
+    district: "Gamla stan",
+    address: "Kullerstensgränd 2",
+    featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-12",
-    name: "Highpoint Lookout Park",
-    district: "West Heights",
-    address: "820 Highpoint Crest",
-    featureIds: ["furniture", "greenery", "lighting", "walkways"]
+    id: "lekplats-12",
+    name: "Höjdparkens lekplats",
+    district: "Västra höjden",
+    address: "Utsiktsvägen 31",
+    featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-13",
-    name: "Cedar Grove Park",
-    district: "Southside",
-    address: "95 Cedar Grove Rd",
+    id: "lekplats-13",
+    name: "Cederskogens lekplats",
+    district: "Södra staden",
+    address: "Cedervägen 14",
     featureIds: ["playground", "furniture", "greenery", "walkways"]
   },
   {
-    id: "park-14",
-    name: "Valley Stream Nature Park",
-    district: "Valley View",
-    address: "402 Stream Valley Way",
-    featureIds: ["furniture", "greenery", "walkways"]
+    id: "lekplats-14",
+    name: "Skogsdalens naturlekplats",
+    district: "Dalgången",
+    address: "Skogsdalsvägen 50",
+    featureIds: ["playground", "furniture", "greenery", "walkways"]
   },
   {
-    id: "park-15",
-    name: "Northgate Athletics & Park",
-    district: "North District",
-    address: "600 Northgate Pkwy",
+    id: "lekplats-15",
+    name: "Idrottsparkens lekplats",
+    district: "Norra staden",
+    address: "Idrottsvägen 6",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-16",
-    name: "Southside Memorial Park",
-    district: "Southside",
-    address: "215 Memorial Ave",
-    featureIds: ["furniture", "greenery", "lighting", "walkways"]
-  },
-  {
-    id: "park-17",
-    name: "Lakeside Park & Beach",
-    district: "Lakefront",
-    address: "10 Lake Shore Dr",
+    id: "lekplats-16",
+    name: "Söderparkens lekplats",
+    district: "Södra staden",
+    address: "Söderleden 88",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-18",
-    name: "Rosewood Botanical Garden",
-    district: "Cultural Quarter",
-    address: "55 Flora Way",
-    featureIds: ["furniture", "greenery", "lighting", "walkways"]
-  },
-  {
-    id: "park-19",
-    name: "Ironworks Heritage Plaza",
-    district: "Industrial Heritage",
-    address: "190 Foundry St",
-    featureIds: ["furniture", "lighting", "walkways"]
-  },
-  {
-    id: "park-20",
-    name: "Forest Glen Wilderness Park",
-    district: "Greenbelt",
-    address: "710 Forest Glen Rd",
-    featureIds: ["furniture", "greenery", "walkways"]
-  },
-  {
-    id: "park-21",
-    name: "Whispering Pines Park",
-    district: "Greenbelt",
-    address: "32 Whispering Pines Trl",
-    featureIds: ["playground", "furniture", "greenery", "lighting"]
-  },
-  {
-    id: "park-22",
-    name: "Heritage Park & Arboretum",
-    district: "Old Town",
-    address: "200 Arboretum Rd",
+    id: "lekplats-17",
+    name: "Strandlekplatsen",
+    district: "Sjöstranden",
+    address: "Badstrandsvägen 2",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-23",
-    name: "Spring Valley Sports Park",
-    district: "Valley View",
-    address: "50 Stadium Way",
+    id: "lekplats-18",
+    name: "Rosenträdgårdens lekplats",
+    district: "Kulturkvarteret",
+    address: "Floragatan 7",
+    featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
+  },
+  {
+    id: "lekplats-19",
+    name: "Bruksparkens lekplats",
+    district: "Industrihistoriska",
+    address: "Bruksgatan 30",
     featureIds: ["playground", "furniture", "lighting", "walkways"]
   },
   {
-    id: "park-24",
-    name: "Fairway Green Community Park",
-    district: "West Heights",
-    address: "114 Fairway Green",
+    id: "lekplats-20",
+    name: "Skogsbrynets lekplats",
+    district: "Grönområdet",
+    address: "Skogsbrynsvägen 11",
+    featureIds: ["playground", "furniture", "greenery", "walkways"]
+  },
+  {
+    id: "lekplats-21",
+    name: "Tallhöjdens lekplats",
+    district: "Grönområdet",
+    address: "Barrstigen 5",
+    featureIds: ["playground", "furniture", "greenery", "lighting"]
+  },
+  {
+    id: "lekplats-22",
+    name: "Kulturparkens lekplats",
+    district: "Gamla stan",
+    address: "Museigatan 14",
     featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   },
   {
-    id: "park-25",
-    name: "Mill Creek Wetland Park",
-    district: "East Suburbs",
-    address: "80 Mill Creek Crossing",
-    featureIds: ["furniture", "greenery", "lighting", "walkways"]
+    id: "lekplats-23",
+    name: "Dalvikens lekplats",
+    district: "Dalgången",
+    address: "Dalviksvägen 19",
+    featureIds: ["playground", "furniture", "lighting", "walkways"]
+  },
+  {
+    id: "lekplats-24",
+    name: "Gröna dalens lekplats",
+    district: "Västra höjden",
+    address: "Dalgränd 3",
+    featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
+  },
+  {
+    id: "lekplats-25",
+    name: "Kvarnbäckens lekplats",
+    district: "Östra stadsdelen",
+    address: "Möllevägen 27",
+    featureIds: ["playground", "furniture", "greenery", "lighting", "walkways"]
   }
 ];
 
 const DEFAULT_SETTINGS = {
-  recipientEmail: "park-maintenance@municipality.gov",
-  inspectorName: "Park Inspector"
+  recipientEmail: "lekplatskontroll@kommun.se",
+  inspectorName: "Lasse"
 };

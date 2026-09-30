@@ -1,39 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#1b4332">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Municipal Park Survey</title>
+  <title>Lekplatskontroll</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
   <div class="app-container">
     
-    <!-- Top Sticky Header -->
+    <!-- Fast toppheader -->
     <header class="app-header">
       <div class="header-top">
-        <button id="btn-header-back" class="icon-btn" style="visibility: hidden;" aria-label="Go Back">
+        <button id="btn-header-back" class="icon-btn" style="visibility: hidden;" aria-label="Tillbaka">
           ←
         </button>
         <div class="header-title-group">
           <div style="min-width:0;">
-            <div id="header-main-title" class="header-title">Municipal Parks</div>
-            <div id="header-sub-title" class="header-subtitle">25 Survey Locations</div>
+            <div id="header-main-title" class="header-title">Lekplatskontroll</div>
+            <div id="header-sub-title" class="header-subtitle">25 kommunala lekplatser</div>
           </div>
         </div>
-        <button id="btn-settings-open" class="icon-btn" aria-label="App Settings">
+        <button id="btn-settings-open" class="icon-btn" aria-label="Inställningar">
           ⚙️
         </button>
       </div>
 
-      <!-- Context Progress Bar (visible on park overview & feature screen) -->
+      <!-- Förloppsindikator -->
       <div id="header-progress" class="header-progress-wrap" style="display: none;">
         <div class="progress-info">
-          <span id="progress-text">0 of 0 Features Checked</span>
+          <span id="progress-text">0 av 0 områden kontrollerade</span>
           <span id="progress-percent">0%</span>
         </div>
         <div class="progress-track">
@@ -42,176 +42,183 @@
       </div>
     </header>
 
-    <!-- App Content Pages -->
+    <!-- Huvudinnehåll -->
     <main class="app-content">
 
-      <!-- SCREEN 1: Parks Selection List -->
+      <!-- SKÄRM 1: Välj lekplats -->
       <section id="screen-parks" class="screen active">
-        <!-- Search bar -->
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="input-park-search" class="search-input" placeholder="Search 25 parks by name or district..." autocomplete="off">
-          <button id="btn-search-clear" class="search-clear" aria-label="Clear search">×</button>
+
+        <!-- Val av besiktningsman -->
+        <div class="inspector-bar">
+          <label class="inspector-label" for="select-inspector">
+            <span>👤</span>
+            <span>Besiktningsman:</span>
+          </label>
+          <select id="select-inspector" class="inspector-select">
+            <option value="Lasse">Lasse</option>
+            <option value="Abdi">Abdi</option>
+          </select>
         </div>
 
-        <!-- Quick Summary Stats -->
+        <!-- Sökfält -->
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="input-park-search" class="search-input" placeholder="Sök bland 25 lekplatser..." autocomplete="off">
+          <button id="btn-search-clear" class="search-clear" aria-label="Rensa sökning">×</button>
+        </div>
+
+        <!-- Snabbstatistik -->
         <div class="stats-banner">
           <div class="stat-chip">
             <div id="stat-total" class="stat-number">25</div>
-            <div class="stat-label">Total Parks</div>
+            <div class="stat-label">Lekplatser</div>
           </div>
           <div class="stat-chip">
             <div id="stat-completed" class="stat-number">0</div>
-            <div class="stat-label">Completed</div>
+            <div class="stat-label">Klara</div>
           </div>
           <div class="stat-chip">
             <div id="stat-issues" class="stat-number" style="color: #dc2626;">0</div>
-            <div class="stat-label">Issues Found</div>
+            <div class="stat-label">Defekter</div>
           </div>
         </div>
 
-        <!-- Parks List Container -->
+        <!-- Lista över lekplatser -->
         <div id="parks-list-container" class="park-list">
-          <!-- Dynamically populated by app.js -->
+          <!-- Genereras dynamiskt via app.js -->
         </div>
       </section>
 
-      <!-- SCREEN 2: Park Overview / Feature Checklist -->
+      <!-- SKÄRM 2: Översikt över lekplats -->
       <section id="screen-park-overview" class="screen">
         <div class="park-summary-card">
-          <h2 id="overview-park-name" class="park-summary-title">Central Civic Park</h2>
-          <div id="overview-park-meta" class="park-summary-address">Downtown • 100 Civic Square</div>
+          <h2 id="overview-park-name" class="park-summary-title">Stadsparkens lekplats</h2>
+          <div id="overview-park-meta" class="park-summary-address">Centrum • Storgatan 12</div>
           <div class="feature-instruction">
-            <span>Features to Inspect</span>
-            <span id="overview-badge" class="badge badge-pending">Pending</span>
+            <span>Områden att kontrollera</span>
+            <span id="overview-badge" class="badge badge-pending">Ej påbörjad</span>
           </div>
         </div>
 
         <div id="features-list-container" class="feature-list">
-          <!-- Dynamically populated by app.js -->
+          <!-- Genereras dynamiskt via app.js -->
         </div>
       </section>
 
-      <!-- SCREEN 3: Feature Form / Control Points -->
+      <!-- SKÄRM 3: Formulär för kontrollpunkter -->
       <section id="screen-feature-form" class="screen">
         <div class="feature-form-header-card">
           <div id="form-feature-name" class="feature-form-title">
             <span>🛝</span>
-            <span>Playground Equipment</span>
+            <span>Lekplatsutrustning</span>
           </div>
           <div id="form-feature-desc" class="feature-form-desc">
-            Check all structural parts, fasteners, and safety margins.
+            Kontrollera bärande delar, fästelement och säkerhetsavstånd.
           </div>
         </div>
 
         <div id="control-points-container" class="control-points-list">
-          <!-- Dynamically populated by app.js -->
+          <!-- Genereras dynamiskt via app.js -->
         </div>
       </section>
 
     </main>
 
-    <!-- STICKY BOTTOM BARS (Contextual) -->
+    <!-- FASTA KNAPPAR I BOTTEN -->
     
-    <!-- Bottom bar for Park Overview Screen -->
+    <!-- Bottenrad för lekplatsöversikten -->
     <div id="bar-park-overview" class="bottom-bar" style="display: none;">
       <button id="btn-send-report" class="primary-btn btn-success" disabled>
-        ✉️ Send Inspection Report
+        ✉️ Skicka besiktningsrapport
       </button>
       <button id="btn-close-park" class="secondary-btn">
-        Close Park
+        Stäng lekplats
       </button>
     </div>
 
-    <!-- Bottom bar for Feature Form Screen -->
+    <!-- Bottenrad för kontrollpunktsformuläret -->
     <div id="bar-feature-form" class="bottom-bar" style="display: none;">
       <button id="btn-save-feature" class="primary-btn">
-        ✓ Save & Return to Park Overview
+        ✓ Spara & återgå till lekplatsen
       </button>
     </div>
 
   </div>
 
-  <!-- MODAL: Inspection Report Preview & Dispatch -->
+  <!-- MODAL: Förhandsgranskning av rapport & E-post -->
   <div id="modal-report" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">Inspection Report Ready</h3>
+        <h3 class="modal-title">Besiktningsrapport klar</h3>
         <button id="btn-close-report-modal" class="icon-btn" style="color: #64748b; background: none; font-size: 1.5rem;">✕</button>
       </div>
       <div class="modal-body">
         <div id="modal-report-summary" class="report-summary-box">
-          <!-- Summary chips -->
+          <!-- Sammanfattning -->
         </div>
 
         <div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 6px;">
-          PRE-FILLED EMAIL DETAILS:
+          FÖRHANDSVALD E-POST:
         </div>
         <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 12px; line-height: 1.4;">
-          <strong>To:</strong> <span id="report-to-display"></span><br>
-          <strong>Subject:</strong> <span id="report-subject-display"></span>
+          <strong>Till:</strong> <span id="report-to-display"></span><br>
+          <strong>Ämne:</strong> <span id="report-subject-display"></span>
         </div>
 
         <div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 6px;">
-          REPORT TEXT BODY:
+          RAPPORTTEXT:
         </div>
         <pre id="report-text-content" class="report-text-preview"></pre>
       </div>
 
       <div class="modal-footer">
         <button id="btn-trigger-email" class="primary-btn btn-success">
-          📧 Open in Email Client
+          📧 Öppna i e-postklient
         </button>
         <button id="btn-copy-report" class="secondary-btn">
-          📋 Copy Report to Clipboard
+          📋 Kopiera rapporttext
         </button>
         <button id="btn-finish-survey" class="secondary-btn" style="color: #166534; font-weight: 600;">
-          ✓ Mark Park Completed & Return to List
+          ✓ Markera lekplats som klar
         </button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Settings -->
+  <!-- MODAL: Inställningar -->
   <div id="modal-settings" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">Survey Settings</h3>
+        <h3 class="modal-title">Inställningar</h3>
         <button id="btn-close-settings-modal" class="icon-btn" style="color: #64748b; background: none; font-size: 1.5rem;">✕</button>
       </div>
       <div class="modal-body">
         <div class="settings-field">
-          <label class="settings-label" for="setting-recipient-email">Report Recipient Email</label>
-          <input type="email" id="setting-recipient-email" class="settings-input" placeholder="e.g. maintenance@municipality.gov">
-          <div class="settings-help">Emails generated will be addressed to this mailbox.</div>
-        </div>
-
-        <div class="settings-field">
-          <label class="settings-label" for="setting-inspector-name">Inspector Name / ID</label>
-          <input type="text" id="setting-inspector-name" class="settings-input" placeholder="e.g. John Doe / Team 4">
-          <div class="settings-help">Included in the header of the survey report.</div>
+          <label class="settings-label" for="setting-recipient-email">Mottagande e-postadress</label>
+          <input type="email" id="setting-recipient-email" class="settings-input" placeholder="t.ex. drift@kommun.se">
+          <div class="settings-help">Besiktningsrapporter adresseras automatiskt till denna e-post.</div>
         </div>
 
         <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-          <label class="settings-label" style="color: #dc2626;">Test & Reset Options</label>
+          <label class="settings-label" style="color: #dc2626;">Återställ data</label>
           <button id="btn-clear-all-data" class="secondary-btn" style="color: #dc2626; border-color: #fca5a5; width: 100%;">
-            🗑️ Reset All Inspection Progress
+            🗑️ Återställ all besiktningshistorik
           </button>
-          <div class="settings-help">Clears all saved survey results in local storage.</div>
+          <div class="settings-help">Rensar lokalt sparade besiktningsprotokoll.</div>
         </div>
       </div>
       <div class="modal-footer">
         <button id="btn-save-settings" class="primary-btn">
-          Save Settings
+          Spara inställningar
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="toast">Action completed</div>
+  <!-- Toast meddelande -->
+  <div id="toast" class="toast">Klart!</div>
 
-  <!-- Application Logic Scripts -->
+  <!-- Skript -->
   <script src="parks-data.js"></script>
   <script src="app.js"></script>
 </body>
