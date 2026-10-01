@@ -4,6 +4,50 @@ En statisk webbapp för kontroll av lekplatser, anpassad för mobiltelefoner.
 Prototypen innehåller exempellekplatser, element och kontrollistor från Excel
 samt ett obligatoriskt fritextfält för besiktningsmannens namn. Namnet sparas i webbläsaren.
 
+## Så använder du appen
+
+1. **Skriv ditt namn** i fältet Besiktningsman.
+2. **Välj en lekplats** och öppna det element du vill kontrollera, till exempel Gångbro eller Lekhus.
+3. **Gå igenom kontrollpunkterna.** Välj OK om allt är i ordning. Välj Anmärkning om du hittar ett problem och beskriv vad som är fel. En anmärkning måste ha en beskrivning för att kontrollpunkten ska räknas som klar.
+4. **Avsluta textredigeringen** med Klar eller genom att trycka utanför textfältet. Du kan öppna fältet igen med Ändra. Dina svar sparas automatiskt, även om du inte trycker Klar.
+5. **Tryck Stäng** i elementets formulär för att gå tillbaka till lekplatsens översikt och välja nästa element. Tryck Stäng på översikten för att återgå till lekplatslistan. Du kan också använda bakåtpilen. Dina svar sparas automatiskt, och du kan fortsätta senare i samma webbläsare på samma telefon eller dator.
+6. **Skicka rapporten när alla kontrollpunkter är klara.** Tryck Skicka rapport på lekplatsens översikt, läs igenom rapporten och tryck Skicka rapport i förhandsgranskningen. Rapporten öppnas i din mejlapp, där du behöver trycka Skicka för att mejlet ska skickas.
+7. **Gå tillbaka till appen** och tryck Bekräfta att rapporten är skickad när du har skickat mejlet. Lekplatsen får då status Rapport skickad. Att bara öppna mejlappen räknas inte som att rapporten är skickad.
+
+### Vad betyder statusen?
+
+- **Ej påbörjad:** inga svar har registrerats.
+- **Påbörjad 2/5:** två av fem kontrollpunkter är klara. Resten behöver besvaras eller få en beskrivning av anmärkningen.
+- **Klar 5/5:** alla fem kontrollpunkter är besvarade. Det kan fortfarande finnas anmärkningar – klar betyder att kontrollen är ifylld.
+- **Rapport skickad:** du har bekräftat att rapporten har skickats från mejlappen.
+
+Siffrorna visar kontrollpunkter, inte antal element. Inne i ett element visas dess
+progress högst upp. På lekplatsens översikt visas den sammanlagda progressen längst ned.
+
+### Fortsätta eller börja om
+
+Öppna samma lekplats och element för att fortsätta där du slutade. Om du
+vill börja om kan du välja Rensa på lekplatsens översikt.
+Alla svar och tidigare kontroller för den lekplatsen tas bort från appen efter
+bekräftelse, och lekplatsen blir ej påbörjad. Redan skickade mejl påverkas inte.
+
+Om checklistan ändras innan rapporten är skickad kan nya eller ändrade punkter
+behöva besvaras när du nästa gång öppnar appen eller går tillbaka till
+lekplatslistan. Svar på oförändrade punkter finns kvar. Redan rapporterade
+kontroller ändras inte av en ny checklista.
+
+### Inställningar och rensning
+
+Tryck på kugghjulet i lekplatslistan för att ändra mottagande e-postadress.
+Här finns också Rensa inspektionsdata. Du får bekräfta innan pågående och
+slutförda inspektioner, historik och ditt namn tas bort. Mottagaradressen behålls.
+Rapporter som redan skickats med mejl påverkas inte.
+
+Utan internet kan du använda appen om den tidigare har laddats färdigt med
+internetanslutning. Appen visar då att ett sparat underlag används. För att skicka
+mejl behöver du internet. Om rapporten inte går att öppna i mejlappen kan du
+välja Kopiera rapporttext och klistra in den i ett mejl själv.
+
 ## Konfiguration i Excel
 
 Excel-filen är huvudunderlaget. Redigera och spara **`data/lekplatskontroll.xlsx`**
