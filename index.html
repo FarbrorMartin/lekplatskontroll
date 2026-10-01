@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Örebro lekplatskoll</title>
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
 
@@ -16,6 +16,8 @@
     <nav id="navigation-bar" class="safe-area-strip main-page" aria-label="Navigering">
       <button id="btn-back" class="back-button" aria-label="Tillbaka" hidden>←</button>
       <div id="navigation-title" class="navigation-title"></div>
+      <span id="element-progress" class="element-progress" hidden role="status"></span>
+      <button id="btn-settings" class="icon-btn settings-button" aria-label="Inställningar">⚙</button>
     </nav>
 
     <!-- Huvudinnehåll -->
@@ -34,7 +36,7 @@
             <span>👤</span>
             <span>Besiktningsman:</span>
           </label>
-          <input type="text" id="input-inspector" class="inspector-input" autocomplete="name" placeholder="Namn">
+          <input type="text" id="input-inspector" class="inspector-input" autocomplete="name" placeholder="Namn" required>
         </div>
 
 
@@ -62,13 +64,6 @@
 
       <!-- SKÄRM 2: Översikt över lekplats -->
       <section id="screen-park-overview" class="screen">
-        <div class="park-summary-card">
-          <div id="overview-park-meta" class="park-summary-address">Centrum • Storgatan 12</div>
-          <div class="feature-instruction">
-            <span id="overview-badge" class="badge badge-pending">Ej påbörjad</span>
-          </div>
-        </div>
-
         <div class="survey-actions">
           <button id="btn-new-survey" class="secondary-btn">Starta ny kontroll</button>
           <button id="btn-history" class="secondary-btn">Tidigare kontroller</button>
@@ -92,19 +87,10 @@
     <!-- Bottenrad för lekplatsöversikten -->
     <div id="bar-park-overview" class="bottom-bar" style="display: none;">
       <button id="btn-send-report" class="primary-btn btn-success" disabled>
-        ✉️ Skicka rapport
-      </button>
-      <button id="btn-close-park" class="secondary-btn">
-        Stäng lekplats
+        ✉️ Granska och skicka
       </button>
     </div>
 
-    <!-- Bottenrad för kontrollpunktsformuläret -->
-    <div id="bar-feature-form" class="bottom-bar" style="display: none;">
-      <button id="btn-save-feature" class="primary-btn">
-        ✓ Spara
-      </button>
-    </div>
 
   </div>
 
@@ -136,7 +122,7 @@
 
       <div class="modal-footer">
         <button id="btn-trigger-email" class="primary-btn btn-success">
-          📧 Öppna i e-postklient
+          📧 Skicka rapport
         </button>
         <button id="btn-copy-report" class="secondary-btn">
           📋 Kopiera rapporttext
@@ -162,11 +148,10 @@
         </div>
 
         <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-          <label class="settings-label" style="color: #dc2626;">Återställ data</label>
           <button id="btn-clear-all-data" class="secondary-btn" style="color: #dc2626; border-color: #fca5a5; width: 100%;">
-            🗑️ Återställ all besiktningshistorik
+            Rensa inspektionsdata
           </button>
-          <div class="settings-help">Rensar lokalt sparade besiktningsprotokoll.</div>
+          <div class="settings-help">Rensar pågående och slutförda inspektioner i appen inklusive namn på besiktningsman. Rapporter som skickats med epost påverkas inte.</div>
         </div>
       </div>
       <div class="modal-footer">
@@ -191,6 +176,6 @@
   <script src="parks-data.js"></script>
   <script src="vendor/xlsx.mini.min.js"></script>
   <script src="workbook-data.js"></script>
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

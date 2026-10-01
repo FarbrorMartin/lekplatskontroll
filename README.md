@@ -1,8 +1,8 @@
 ﻿# Lekplatskontroll
 
 En statisk webbapp för kontroll av lekplatser, anpassad för mobiltelefoner.
-Prototypen innehåller fyra exempellekplatser, element och kontrollistor från Excel
-samt ett fritextfält för besiktningsmannens namn. Namnet sparas i webbläsaren.
+Prototypen innehåller exempellekplatser, element och kontrollistor från Excel
+samt ett obligatoriskt fritextfält för besiktningsmannens namn. Namnet sparas i webbläsaren.
 
 ## Konfiguration i Excel
 
@@ -57,27 +57,31 @@ Publicera appen via HTTPS för att kunna använda den utan internet på telefone
 
 ## Sparade kontroller
 
+För att återställa appen vid testning, öppna den med `?reset=1`, till exempel
+`http://localhost:8080/?reset=1`. Detta tar endast bort appens två localStorage-poster:
+kontroller (inklusive historik och checklistkopior) och inställningar (inklusive namn).
+Övriga appar, cookies och webbläsarens cache påverkas inte. Parametern tas bort
+från adressen efter återställningen så att nästa omladdning inte rensar igen.
+
 Webbläsarens bakåt- och framåtknappar följer lekplatslistan, lekplatsöversikten
-och elementets formulär. Vid omladdning återställs den aktuella vyn. När ett
-formulär sparas återgår appen till den befintliga översikten i webbläsarhistoriken.
+och elementets formulär. Vid omladdning återställs den aktuella vyn. Tillbaka från ett formulär återgår till lekplatsöversikten.
 Bakåt från lekplatslistan kan lämna webbplatsen som vanligt.
 
 Svar och beskrivningar av anmärkningar sparas löpande som utkast i localStorage.
 Utkastet finns kvar om du laddar om sidan eller lämnar formuläret. Ett element
-räknas som klart först när alla kontroller är besvarade, varje anmärkning har
-en beskrivning och formuläret har sparats.
+räknas som klart först när alla kontroller är besvarade, varje anmärkning
+har en beskrivning. Ingen separat sparknapp behövs.
 
 Besiktningsmannen registreras vid det första svaret. Rapportens datum är
 tidpunkten för den senaste ändringen av kontrollen. Om du ändrar besiktningsmannens namn
-gäller valet för nya kontroller. Poster som saknar besiktningsman märks med
-att uppgiften inte är registrerad.
+gäller valet för nya kontroller. Ett namn måste anges innan en kontroll kan påbörjas.
 
 När alla element är klara blir rapporten tillgänglig. En lekplats räknas som
 rapporterad först när användaren bekräftar att mejlet har skickats. Att öppna
 mejlappen bekräftar inte att mejlet har levererats. Rapporten kan också kopieras
 till urklipp.
 
-En ny kontroll kan startas från lekplatsöversikten. Då sparas den föregående
+Efter att en rapport har markerats som skickad kan en ny kontroll startas från lekplatsöversikten. Då sparas den föregående
 rapporten som vanlig text i lekplatsens historik och de aktuella svaren töms.
 Historik och utkast finns endast i den här webbläsaren. De tas bort om du rensar
 webbläsardata eller använder appens återställningsfunktion.

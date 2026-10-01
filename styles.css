@@ -30,6 +30,10 @@
 }
 
 .survey-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.survey-actions:has(button:not([hidden])) { margin-bottom: 16px; }
+.survey-actions:not(:has(button:not([hidden]))) { display: none; }
+.survey-actions button[hidden] { display: none; }
+.issue-count { color: #991b1b; }
 :focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
 #storage-warning { position: fixed; top: 0; left: 0; right: 0; padding: 12px; background: #fee2e2; color: #991b1b; z-index: 200; }
 .feature-card-header { flex-wrap: wrap; gap: 8px; }
@@ -95,8 +99,11 @@ body {
 }
 
 .safe-area-strip.main-page {
-  min-height: calc(env(safe-area-inset-top, 0px) + 24px);
+  min-height: calc(env(safe-area-inset-top, 0px) + 48px);
 }
+
+.settings-button { margin-left: auto; background: transparent; }
+.settings-button[hidden] { display: none; }
 
 .safe-area-strip.main-page .navigation-title { display: none; }
 
@@ -465,68 +472,38 @@ body {
 }
 
 /* Park Overview Screen */
-.park-summary-card {
-  background: white;
-  border-radius: var(--radius-md);
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.park-summary-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--primary);
-  margin-bottom: 4px;
-}
-
-.park-summary-address {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-}
-
-.feature-instruction {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 /* Feature List */
 .feature-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .feature-card {
   background: white;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   padding: 16px;
-  border: 1.5px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+  border: none;
+  box-shadow: none;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
 }
 
 .feature-card:hover {
-  border-color: var(--primary-light);
-  box-shadow: var(--shadow-md);
+  background: #f1f5f9;
 }
 
 .feature-card.done-ok {
-  border-color: var(--status-ok-border);
-  background: #fcfdfd;
+  background: white;
 }
 
 .feature-card.done-issue {
-  border-color: var(--status-issue-border);
-  background: #fffafa;
+  background: white;
 }
 
 .feature-card-header {
@@ -557,7 +534,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding-top: 8px;
-  border-top: 1px dashed var(--border-color);
+  border-top: none;
   font-size: 0.78rem;
   color: var(--text-muted);
 }
@@ -611,11 +588,12 @@ body {
 }
 
 .point-number {
+  float: right;
+  margin-left: 12px;
   font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--primary-light);
-  text-transform: uppercase;
-  margin-bottom: 4px;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.33rem;
 }
 
 .point-text {
@@ -628,6 +606,7 @@ body {
 
 /* Segmented Buttons for OK vs Issue */
 .toggle-group {
+  clear: both;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -967,5 +946,14 @@ body {
 
 #bar-park-overview { flex-direction: column; }
 .app-content:has(#screen-park-overview.active) {
-  padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
+.app-content:has(#screen-feature-form.active) { padding-bottom: 24px; }
+
+.navigation-title { flex: 1; }
+.element-progress { flex-shrink: 0; color: #d8f3dc; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.feature-card + .feature-card { border-top: 1px solid var(--border-color); }
+.feature-card:first-child { border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.feature-card:last-child { border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.feature-card:only-child { border-radius: var(--radius-md); }
+#btn-send-report:disabled { background: #e2e8f0; color: #475569; opacity: 1; }
