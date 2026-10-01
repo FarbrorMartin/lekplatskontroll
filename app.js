@@ -405,6 +405,7 @@
     elScreenFeatureForm.classList.remove("active");
 
     elBarParkOverview.style.display = "none";
+    document.getElementById('bar-feature-form').style.display = 'none';
 
     document.querySelector(".app-content").scrollTop = 0;
 
@@ -443,6 +444,7 @@
 
 
       elScreenFeatureForm.classList.add("active");
+      document.getElementById('bar-feature-form').style.display = 'flex';
 
       elNavigationTitle.textContent = `${park.name} – ${featureType.name}`;
       renderFeatureForm(park, featureType);

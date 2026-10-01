@@ -53,7 +53,9 @@ body {
   background-color: var(--bg-page);
   color: var(--text-main);
   line-height: 1.5;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: stretch;
@@ -63,7 +65,8 @@ body {
 .app-container {
   width: 100%;
   max-width: 500px;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -220,8 +223,8 @@ body {
 /* Main Content Area */
 .app-content {
   flex: 1;
+  min-height: 0;
   padding: 16px;
-  padding-bottom: 96px; /* space for sticky bottom bar */
   overflow-y: auto;
   background: #f8fafc;
 }
@@ -387,9 +390,6 @@ body {
   .stat-label { font-size: 0.65rem; letter-spacing: 0; }
 }
 
-.form-exit { margin-top: 20px; text-align: center; }
-.form-exit p { color: var(--text-muted); font-size: 0.85rem; }
-.form-exit button { width: 100%; }
 
 .park-list {
   display: flex;
@@ -695,10 +695,8 @@ body {
 
 /* Sticky Bottom Action Bar */
 .bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  flex-shrink: 0;
   width: 100%;
   max-width: 500px;
   background: #ffffff;
@@ -961,10 +959,8 @@ body {
 }
 
 #bar-park-overview { flex-direction: row; }
-.app-content:has(#screen-park-overview.active) {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-}
-.app-content:has(#screen-feature-form.active) { padding-bottom: 24px; }
+#bar-feature-form { flex-wrap: wrap; gap: 8px; }
+.app-container:has(.defect-textarea:not([readonly]):focus) #bar-feature-form { display: none !important; }
 
 .navigation-title { flex: 1; }
 .element-progress { flex-shrink: 0; color: #d8f3dc; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
