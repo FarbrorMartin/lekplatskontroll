@@ -48,7 +48,7 @@
           </div>
           <div class="stat-chip">
             <div id="stat-completed" class="stat-number">0</div>
-            <div class="stat-label">Rapporter skickade</div>
+            <div class="stat-label">Skickade</div>
           </div>
           <div class="stat-chip">
             <div id="stat-issues" class="stat-number" style="color: #dc2626;">0</div>
@@ -65,7 +65,7 @@
       <!-- SKÄRM 2: Översikt över lekplats -->
       <section id="screen-park-overview" class="screen">
         <div class="survey-actions">
-          <button id="btn-new-survey" class="secondary-btn">Starta ny kontroll</button>
+          <button id="btn-new-survey" class="reset-survey-btn" aria-label="Rensa formulär och börja om">Rensa</button>
           <button id="btn-history" class="secondary-btn">Tidigare kontroller</button>
         </div>
         <div id="features-list-container" class="feature-list">
@@ -78,6 +78,10 @@
         <div id="control-points-container" class="control-points-list">
           <!-- Genereras dynamiskt via app.js -->
         </div>
+        <div class="form-exit">
+          <p>Svar sparas automatiskt.</p>
+          <button id="btn-close-feature" class="primary-btn">Stäng</button>
+        </div>
       </section>
 
     </main>
@@ -86,8 +90,10 @@
     
     <!-- Bottenrad för lekplatsöversikten -->
     <div id="bar-park-overview" class="bottom-bar" style="display: none;">
+      <span id="park-footer-progress" class="park-footer-progress" role="status"></span>
+      <button id="btn-close-park" class="primary-btn">Stäng</button>
       <button id="btn-send-report" class="primary-btn btn-success" disabled>
-        ✉️ Granska och skicka
+        Skicka rapport
       </button>
     </div>
 
@@ -117,7 +123,7 @@
         <div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 6px;">
           RAPPORTTEXT:
         </div>
-        <pre id="report-text-content" class="report-text-preview"></pre>
+        <div id="report-text-content" class="report-text-preview"></div>
       </div>
 
       <div class="modal-footer">
@@ -162,6 +168,16 @@
     </div>
   </div>
 
+  <div id="modal-reset-park" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-park-title">
+    <div class="modal-content">
+      <div class="modal-header"><h3 id="reset-park-title"></h3></div>
+      <div class="modal-body"><p>Alla sparade svar och tidigare kontroller för lekplatsen tas bort.</p><p>Redan skickade mejl påverkas inte.</p></div>
+      <div class="modal-footer">
+        <button id="btn-cancel-reset-park" class="secondary-btn">Avbryt</button>
+        <button id="btn-confirm-reset-park" class="primary-btn">Rensa och börja om</button>
+      </div>
+    </div>
+  </div>
   <div id="modal-history" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Tidigare kontroller">
     <div class="modal-content">
       <div class="modal-header"><h3>Tidigare kontroller</h3><button id="btn-close-history" class="secondary-btn">Stäng</button></div>

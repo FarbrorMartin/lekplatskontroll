@@ -444,7 +444,7 @@
 
       elScreenFeatureForm.classList.add("active");
 
-      elNavigationTitle.textContent = featureType.name;
+      elNavigationTitle.textContent = `${park.name} – ${featureType.name}`;
       renderFeatureForm(park, featureType);
       updateElementProgress();
     }
@@ -503,16 +503,16 @@
 
     const prog = calculateParkProgress(park.id);
     const survey = getParkSurvey(park.id);
-    document.getElementById('btn-new-survey').hidden = survey.status !== 'reported';
+    document.getElementById('btn-new-survey').hidden = !prog.started && !survey.history?.length;
     document.getElementById('btn-history').hidden = !(survey.history?.length);
 
     if (prog.completed === prog.total && prog.total > 0) {
       elBtnSendReport.disabled = false;
-      elBtnSendReport.textContent = 'Granska och skicka';
     } else {
       elBtnSendReport.disabled = true;
-      elBtnSendReport.textContent = `${prog.answered}/${prog.checks} kontroller klara`;
     }
+    elBtnSendReport.textContent = 'Skicka rapport';
+    document.getElementById('park-footer-progress').textContent = `${prog.answered}/${prog.checks} kontroller klara`;
 
     elFeaturesListContainer.innerHTML = park.featureIds.map(fId => {
       const featType = getFeatureType(park.id, fId);
@@ -703,7 +703,7 @@
     if (park.address) lines.push(`Adress: ${park.address}`);
     lines.push(`Datum: ${formattedDate}`);
     lines.push(`Besiktningsman: ${parkSurvey.inspectorName || appState.settings.inspectorName}`);
-    lines.push(`Status: ${prog.issues === 0 ? "Allt OK" : `${prog.issues} anmärkning(ar) upptäckta`}`);
+    lines.push(`Status: ${prog.issues === 0 ? "Allt OK" : `${prog.issues} ${prog.issues === 1 ? 'anmärkning upptäckt' : 'anmärkningar upptäckta'}`}`);
     lines.push("");
 
     let problemsFound = [];
@@ -713,38 +713,86 @@
       const featData = parkSurvey.features[fId];
 
       lines.push(featType.name.toUpperCase());
+      lines.push("");
 
       if (featData && featData.points) {
-        featData.points.forEach((pt) => {
-          if (pt.status === "ok") {
-            lines.push(`OK             •  ${pt.text}`);
-          } else if (pt.status === 'issue') {
+        const issues = featData.points.filter(pt => pt.status === 'issue');
+        const approved = featData.points.filter(pt => pt.status === 'ok');
+        const unchecked = featData.points.filter(pt => pt.status !== 'ok' && pt.status !== 'issue');
+        if (issues.length) {
+          lines.push('Anmärkningar:');
+          issues.forEach(pt => {
             const desc = pt.note && pt.note.trim() ? pt.note.trim() : "Anmärkning noterad (ingen beskrivning angiven)";
-            lines.push(`ANMÄRKNING      •  ${pt.text}: ${desc}`);
-            problemsFound.push(`${featType.name} - ${pt.text}: ${desc}`);
-          } else {
-            lines.push(`EJ KONTROLLERAD     •  ${pt.text}`);
-          }
-        });
+            lines.push(`- ${pt.text}`, `Beskrivning: ${desc}`, '');
+            problemsFound.push(`${featType.name} - ${pt.text}\nBeskrivning: ${desc}`);
+          });
+        } else {
+          lines.push('Inga anmärkningar.', '');
+        }
+        if (approved.length) {
+          lines.push('Godkända kontrollpunkter:');
+          approved.forEach(pt => lines.push(`- ${pt.text}`));
+        }
+        if (unchecked.length) {
+          if (approved.length) lines.push('');
+          lines.push('Ej kontrollerade kontrollpunkter:');
+          unchecked.forEach(pt => lines.push(`- ${pt.text}`));
+        }
       } else {
         lines.push("Området ej kontrollerat");
       }
       lines.push("");
     });
 
-    lines.push("SAMMANFATTNING AV ANMÄRKNINGAR");
+    lines.push(problemsFound.length ? "SAMMANFATTNING AV ANMÄRKNINGAR" : "SAMMANFATTNING");
+    lines.push('');
     if (prog.completed !== prog.total) {
       lines.push('Kontrollen är ofullständig.');
     }
     if (problemsFound.length === 0 && prog.completed === prog.total) {
-      lines.push("Inga anmärkningar upptäckta. All utrustning i gott skick.");
+      lines.push("Alla kontrollpunkter är godkända.", "Inga anmärkningar upptäckta.");
     } else {
       problemsFound.forEach((prob, idx) => {
         lines.push(`${idx + 1}. ${prob}`);
+        if (idx < problemsFound.length - 1) lines.push('');
       });
     }
 
     return lines.join("\n");
+  }
+
+  function renderReportPreview(park) {
+    const survey = getParkSurvey(park.id);
+    const date = reportDate(survey);
+    const progress = calculateParkProgress(park.id);
+    const metadata = [
+      ['Lekplats', park.name],
+      ...(park.district ? [['Område', park.district]] : []),
+      ...(park.address ? [['Adress', park.address]] : []),
+      ['Datum', date.toLocaleDateString('sv-SE') + ' ' + date.toLocaleTimeString('sv-SE', {hour: '2-digit', minute: '2-digit'})],
+      ['Besiktningsman', survey.inspectorName || appState.settings.inspectorName]
+    ];
+    const issues = [];
+    const sections = park.featureIds.map(id => {
+      const feature = getFeatureType(park.id, id);
+      const points = survey.features[id]?.points;
+      const rows = points ? points.map(point => {
+        const status = point.status === 'ok' ? 'ok' : point.status === 'issue' ? 'issue' : 'unchecked';
+        const label = {ok: 'OK', issue: 'Anmärkning', unchecked: 'Ej kontrollerad'}[status];
+        const note = status === 'issue' ? (point.note?.trim() || 'Anmärkning noterad (ingen beskrivning angiven)') : '';
+        if (note) issues.push(`${feature.name} – ${point.text}: ${note}`);
+        return `<li class="report-point"><span class="report-status report-status-${status}">${label}</span><div class="report-point-content"><div>${escapeHtml(point.text)}</div>${note ? `<div class="report-note"><strong>Beskrivning:</strong> ${escapeHtml(note)}</div>` : ''}</div></li>`;
+      }).join('') : '<li class="report-point">Området ej kontrollerat</li>';
+      return `<section class="report-section"><h4>${escapeHtml(feature.name)}</h4><ul class="report-points">${rows}</ul></section>`;
+    }).join('');
+    elReportTextContent.innerHTML = `
+      <h4 class="report-heading">Lekplatskontroll – besiktningsrapport</h4>
+      <dl class="report-metadata">${metadata.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl>
+      ${sections}
+      <section class="report-section"><h4>Sammanfattning av anmärkningar</h4>
+        ${progress.completed !== progress.total ? '<p>Kontrollen är ofullständig.</p>' : ''}
+        ${issues.length ? `<ol class="report-issues">${issues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')}</ol>` : progress.completed === progress.total ? '<p>Inga anmärkningar upptäckta. All utrustning i gott skick.</p>' : ''}
+      </section>`;
   }
 
   function openReportModal() {
@@ -753,14 +801,13 @@
 
     const prog = calculateParkProgress(park.id);
     if (!prog.total || prog.completed !== prog.total) return;
-    const reportText = generateReportText(park);
     const formattedDate = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
     const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' anmärkningar'}) - ${formattedDate}`;
     const recipient = appState.settings.recipientEmail;
 
     elReportToDisplay.textContent = recipient;
     elReportSubjectDisplay.textContent = subject;
-    elReportTextContent.textContent = reportText;
+    renderReportPreview(park);
 
     elModalReportSummary.className = prog.issues > 0 ? "report-summary-box has-issues" : "report-summary-box";
     elModalReportSummary.innerHTML = `
@@ -896,23 +943,35 @@
     if (modalOpener) modalOpener.focus();
   }
 
-  function startNewSurvey() {
+  function startNewSurvey(confirmed = false) {
     const park = MUNICIPAL_PARKS.find(item => item.id === appState.selectedParkId);
     if (!park) { showToast('Lekplatsen finns inte längre i underlaget.'); return; }
-    if (!park || !confirm('Starta en ny kontroll? Den nuvarande kontrollen sparas i historiken.')) return;
-    const previous = getParkSurvey(park.id);
-    const previousReport = generateReportText(getPark(park.id));
-    appState.surveyData[park.id] = {status: 'not-started', features: {}, lastUpdated: null,
-      history: [...(previous.history || []), {report: previousReport,
-        status: previous.status, reportedAt: previous.reportedAt || null,
-        archivedAt: new Date().toISOString()}]};
-    if (!persistData()) { appState.surveyData[park.id] = previous; return; }
+    if (confirmed !== true && !confirm(`Rensa ${park.name} och börja om? Alla sparade svar och tidigare kontroller för lekplatsen tas bort. Redan skickade mejl påverkas inte.`)) return;
+    const previous = appState.surveyData[park.id];
+    delete appState.surveyData[park.id];
+    if (!persistData()) { if (previous) appState.surveyData[park.id] = previous; return; }
+    currentFormAnswers = {};
     navigateTo('overview', {parkId: park.id});
   }
 
   function bindEvents() {
+    document.getElementById('btn-close-park').addEventListener('click', () => navigateTo('parks'));
+    document.getElementById('btn-close-feature').addEventListener('click', () => {
+      navigateTo('overview', {parkId: appState.selectedParkId});
+    });
     document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
-    document.getElementById('btn-new-survey').addEventListener('click', startNewSurvey);
+    const resetModal = document.getElementById('modal-reset-park');
+    document.getElementById('btn-new-survey').addEventListener('click', () => {
+      const park = getPark(appState.selectedParkId);
+      if (!park) return;
+      document.getElementById('reset-park-title').textContent = `Rensa ${park.name} och börja om?`;
+      openModal(resetModal);
+    });
+    document.getElementById('btn-cancel-reset-park').addEventListener('click', () => closeModal(resetModal));
+    document.getElementById('btn-confirm-reset-park').addEventListener('click', () => {
+      closeModal(resetModal);
+      startNewSurvey(true);
+    });
     document.getElementById('btn-history').addEventListener('click', () => {
       const history = getParkSurvey(appState.selectedParkId).history || [];
       document.getElementById('history-content').textContent = history.length
@@ -956,7 +1015,7 @@
     elBtnSaveSettings.addEventListener("click", saveSettings);
     elBtnClearAllData.addEventListener("click", clearAllData);
 
-    [elModalReport, elModalSettings, document.getElementById('modal-history')].forEach(modal => {
+    [elModalReport, elModalSettings, document.getElementById('modal-history'), resetModal].forEach(modal => {
       modal.addEventListener("click", (e) => {
         if (e.target === modal) {
           closeModal(modal);

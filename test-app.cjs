@@ -38,7 +38,7 @@ vm.runInContext('const config = configurationFromWorkbook(XLSX.read(workbookByte
 let source = fs.readFileSync('app.js', 'utf8');
 source = source.replace('  if (document.readyState === "loading")', `
   globalThis.test = {init, appState, saveDraft, getFeatureStatus, loadStorage, resetStorageFromUrl, clearAllData, reconcileInspections,
-    generateReportText, calculateParkProgress, startNewSurvey, finishAndClosePark,
+    generateReportText, renderReportPreview, calculateParkProgress, startNewSurvey, finishAndClosePark,
     escapeHtml, persistData, getPark, updateGlobalStats, fallbackCopyText, navigateTo,
     answers: value => { currentFormAnswers = value; }};
   if (document.readyState === "loading")`);
@@ -84,6 +84,15 @@ assert.equal(app.appState.surveyData[parkId].features['Gångbro'].points[0].note
 app.appState.settings.inspectorName = 'Abdi';
 assert.match(app.generateReportText(app.getPark(parkId)), /Besiktningsman: Lasse/);
 assert.equal(app.generateReportText(app.getPark(parkId)), app.generateReportText(app.getPark(parkId)));
+const textBeforePreview = app.generateReportText(app.getPark(parkId));
+assert.match(textBeforePreview, /Anmärkningar:\n- [^\n]+\nBeskrivning: <\/textarea><img src=x>\n\n/);
+assert.match(textBeforePreview, /Godkända kontrollpunkter:\n- /);
+assert.doesNotMatch(textBeforePreview, /•|OK {2,}|ANMÄRKNING {2,}/);
+app.renderReportPreview(app.getPark(parkId));
+assert.match(node('report-text-content').innerHTML, /report-status-issue/);
+assert.match(node('report-text-content').innerHTML, /&lt;\/textarea&gt;&lt;img src=x&gt;/);
+assert.doesNotMatch(node('report-text-content').innerHTML, /<img src=x>/);
+assert.equal(app.generateReportText(app.getPark(parkId)), textBeforePreview);
 assert.equal(app.escapeHtml('</textarea>'), '&lt;/textarea&gt;');
 answers[0].note = '   ';
 app.answers(answers);
@@ -92,7 +101,8 @@ assert.equal(app.calculateParkProgress(parkId).completed, 0);
 assert.equal(app.getFeatureStatus(parkId, 'Gångbro').answered, count - 1);
 assert.equal(app.getFeatureStatus(parkId, 'Gångbro').status, 'in-progress');
 app.navigateTo('overview', {parkId});
-assert.match(node('btn-send-report').textContent, /^\d+\/\d+ kontroller klara$/);
+assert.equal(node('btn-send-report').textContent, 'Skicka rapport');
+assert.match(node('park-footer-progress').textContent, /^\d+\/\d+ kontroller klara$/);
 assert.match(node('features-list-container').innerHTML, /Påbörjad/);
 app.navigateTo('form', {featureId: 'Gångbro'});
 assert.equal(node('element-progress').textContent, `${count - 1}/${count}`);
@@ -116,7 +126,8 @@ assert.equal(app.generateReportText(app.getPark(parkId)), oldReport);
 vm.runInContext('FEATURE_TYPES["Gångbro"].points.reverse();', context);
 app.startNewSurvey();
 assert.equal(app.calculateParkProgress(parkId).completed, 0);
-assert.equal(app.appState.surveyData[parkId].history[0].report, oldReport);
+assert.equal(app.appState.surveyData[parkId].history, undefined);
+assert.equal(app.appState.surveyData[parkId].startedAt, undefined);
 app.finishAndClosePark();
 assert.equal(app.appState.surveyData[parkId].status, 'not-started');
 const survey = app.appState.surveyData[parkId];
@@ -203,7 +214,7 @@ assert.equal(app.reconcileInspections(), true);
 assert.equal(JSON.stringify(app.appState.surveyData[parkId]), reportedCopy);
 app.startNewSurvey();
 assert.ok(app.getPark(parkId).featureIds.includes('Nytt element'));
-assert.equal(app.appState.surveyData[parkId].history.at(-1).report.includes('Ändrad kontroll'), false);
+assert.equal(app.appState.surveyData[parkId].history, undefined);
 assert.equal(app.getFeatureStatus(parkId, 'Gångbro').answered, 0);
 app.navigateTo('form', {featureId: 'Gångbro'});
 app.answers({0: {status: 'ok', note: ''}});
