@@ -871,7 +871,7 @@
   function finishAndClosePark() {
     const progress = calculateParkProgress(appState.selectedParkId);
     if (!progress.total || progress.completed !== progress.total) return;
-    if (!confirm('Har du skickat rapporten i e-postklienten? Bekräfta endast om den är skickad.')) return;
+    if (!confirm('Kom ihåg att du behöver klicka Skicka i mejlappen för att rapporten ska skickas. Annars skickas den inte.')) return;
     const park = getPark(appState.selectedParkId);
     if (park) {
       const parkSurvey = getParkSurvey(park.id);
