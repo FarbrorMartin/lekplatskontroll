@@ -584,16 +584,7 @@ body {
 }
 
 .control-point-card.state-issue {
-  border-left: 4px solid #dc2626;
-}
-
-.point-number {
-  float: right;
-  margin-left: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  line-height: 1.33rem;
+  border-left: 4px solid #b7791f;
 }
 
 .point-text {
@@ -606,7 +597,6 @@ body {
 
 /* Segmented Buttons for OK vs Issue */
 .toggle-group {
-  clear: both;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -642,16 +632,16 @@ body {
 }
 
 .toggle-btn.btn-issue:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #991b1b;
+  background: #fffbeb;
+  border-color: #d4ad67;
+  color: #713f12;
 }
 
 .toggle-btn.btn-issue.selected {
-  background: #dc2626;
-  border-color: #b91c1c;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+  background: #fef3c7;
+  border-color: #b7791f;
+  color: #713f12;
+  box-shadow: none;
 }
 
 /* Defect Input Box */
@@ -670,21 +660,13 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.defect-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #991b1b;
-  margin-bottom: 6px;
-  display: block;
-}
-
 .defect-textarea {
   width: 100%;
   min-height: 72px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid #fca5a5;
-  background-color: #fffafa;
+  border: 1.5px solid #94a3b8;
+  background-color: #ffffff;
   font-family: inherit;
   font-size: 0.9rem;
   color: var(--text-main);
@@ -693,9 +675,16 @@ body {
 }
 
 .defect-textarea:focus {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
+
+.defect-textarea[readonly] { background: #f1f5f9; }
+.defect-textarea[aria-invalid="true"] { border-color: #dc2626; }
+
+.defect-help { margin-top: 6px; font-size: 0.85rem; color: #991b1b; }
+.defect-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.defect-action { min-width: 96px; }
 
 /* Sticky Bottom Action Bar */
 .bottom-bar {

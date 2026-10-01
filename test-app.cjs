@@ -37,7 +37,7 @@ context.workbookBytes = fs.readFileSync('data/lekplatskontroll.xlsx');
 vm.runInContext('const config = configurationFromWorkbook(XLSX.read(workbookBytes)); FEATURE_TYPES = config.featureTypes; MUNICIPAL_PARKS = config.parks;', context);
 let source = fs.readFileSync('app.js', 'utf8');
 source = source.replace('  if (document.readyState === "loading")', `
-  globalThis.test = {init, appState, saveDraft, getFeatureStatus, loadStorage, resetStorageFromUrl, clearAllData,
+  globalThis.test = {init, appState, saveDraft, getFeatureStatus, loadStorage, resetStorageFromUrl, clearAllData, reconcileInspections,
     generateReportText, calculateParkProgress, startNewSurvey, finishAndClosePark,
     escapeHtml, persistData, getPark, updateGlobalStats, fallbackCopyText, navigateTo,
     answers: value => { currentFormAnswers = value; }};
@@ -171,4 +171,51 @@ assert.equal(app.appState.settings.inspectorName, '');
 assert.equal(node('input-inspector').value, '');
 assert.equal(app.appState.settings.recipientEmail, 'test@example.com');
 assert.equal(stored.get('another_app'), 'keep me');
+// Reconciliation matches text, not position, and never changes a reported survey.
+app.appState.settings.inspectorName = 'Zelda';
+app.navigateTo('overview', {parkId});
+app.navigateTo('form', {featureId: 'Gångbro'});
+app.answers(answers);
+app.saveDraft();
+const beforeUpdate = JSON.parse(JSON.stringify(app.appState.surveyData[parkId]));
+context.reconcileParkId = parkId;
+vm.runInContext(`
+  const originalTypes = JSON.parse(JSON.stringify(FEATURE_TYPES));
+  const originalParks = JSON.parse(JSON.stringify(MUNICIPAL_PARKS));
+  FEATURE_TYPES['Gångbro'].points = [...FEATURE_TYPES['Gångbro'].points.slice(0, -1).reverse(), 'Ny kontroll'];
+  FEATURE_TYPES['Gångbro'].pointIds = FEATURE_TYPES['Gångbro'].points.map((_, i) => 'Gångbro:' + (i + 1));
+  FEATURE_TYPES['Nytt element'] = {id: 'Nytt element', name: 'Nytt element', icon: '📋', points: ['Ny punkt'], pointIds: ['Nytt element:1']};
+  MUNICIPAL_PARKS.find(p => p.id === reconcileParkId).featureIds.push('Nytt element');
+`, context);
+assert.equal(app.reconcileInspections(), true);
+const reconciled = app.appState.surveyData[parkId];
+assert.equal(reconciled.features['Gångbro'].points.at(-1).status, null);
+assert.equal(reconciled.features['Gångbro'].points[0].text, beforeUpdate.features['Gångbro'].points.at(-2).text);
+assert.equal(reconciled.features['Gångbro'].points[0].status, 'ok');
+assert.equal(reconciled.features['Gångbro'].points.find(p => p.text === beforeUpdate.features['Gångbro'].points[0].text).note, 'Trasig bult');
+assert.equal(reconciled.features['Nytt element'].points[0].status, null);
+assert.equal(app.getFeatureStatus(parkId, 'Gångbro').answered, count - 1);
+// Completed but unreported work still updates; reported work remains frozen.
+reconciled.status = 'reported';
+const reportedCopy = JSON.stringify(reconciled);
+vm.runInContext("FEATURE_TYPES['Gångbro'].points[0] = 'Ändrad kontroll';", context);
+assert.equal(app.reconcileInspections(), true);
+assert.equal(JSON.stringify(app.appState.surveyData[parkId]), reportedCopy);
+app.startNewSurvey();
+assert.ok(app.getPark(parkId).featureIds.includes('Nytt element'));
+assert.equal(app.appState.surveyData[parkId].history.at(-1).report.includes('Ändrad kontroll'), false);
+assert.equal(app.getFeatureStatus(parkId, 'Gångbro').answered, 0);
+app.navigateTo('form', {featureId: 'Gångbro'});
+app.answers({0: {status: 'ok', note: ''}});
+app.saveDraft();
+const priorFailedUpdate = JSON.stringify(app.appState.surveyData);
+vm.runInContext("FEATURE_TYPES['Gångbro'].points[0] = 'Ytterligare ändring';", context);
+failStorage = true;
+assert.equal(app.reconcileInspections(), false);
+assert.equal(JSON.stringify(app.appState.surveyData), priorFailedUpdate);
+failStorage = false;
+assert.equal(app.reconcileInspections(), true);
+assert.equal(app.getFeatureStatus(parkId, 'Gångbro').answered, 0);
+assert.equal(app.calculateParkProgress(parkId).started, true);
+vm.runInContext('FEATURE_TYPES = originalTypes; MUNICIPAL_PARKS = originalParks;', context);
 console.log('Passed: browser back/forward, reload screen restoration, automatic completion, partial progress, draft recovery, inspector attribution, report stability, required notes, HTML escaping, submission confirmation/count, archived report, clipboard/storage failure, corrupt-data protection.');

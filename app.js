@@ -67,6 +67,7 @@
   function init() {
     if (!resetStorageFromUrl()) return;
     loadStorage();
+    reconcileInspections();
     setupInspectorInput();
     bindEvents();
     renderParksList();
@@ -222,6 +223,70 @@
     park.featureIds.forEach(id => { survey.catalog.featureTypes[id] = JSON.parse(JSON.stringify(FEATURE_TYPES[id])); });
   }
 
+  function reconcileInspections() {
+    if (storageReadFailed) return false;
+    const previous = appState.surveyData;
+    const next = JSON.parse(JSON.stringify(previous));
+    const key = text => text.trim().normalize('NFC');
+    Object.entries(next).forEach(([parkId, survey]) => {
+      if (survey.status === 'reported') return;
+      const park = MUNICIPAL_PARKS.find(item => item.id === parkId);
+      if (!park) { delete next[parkId]; return; }
+      if (!survey.catalog) return;
+      const features = Object.create(null);
+      park.featureIds.forEach(id => {
+        const type = FEATURE_TYPES[id];
+        const oldPoints = new Map((survey.features[id]?.points || []).map(point => [key(point.text), point]));
+        features[id] = {points: type.points.map((text, idx) => {
+          const answer = oldPoints.get(key(text));
+          return {id: type.pointIds[idx], text, status: answer?.status || null, note: answer?.note || ''};
+        })};
+      });
+      survey.features = features;
+      delete survey.catalog;
+      snapshotSurvey(park, survey);
+    });
+    if (JSON.stringify(previous) === JSON.stringify(next)) return true;
+    appState.surveyData = next;
+    if (!persistData()) { appState.surveyData = previous; return false; }
+    return true;
+  }
+
+  function listedParks() {
+    const parks = [...MUNICIPAL_PARKS];
+    Object.values(appState.surveyData).forEach(survey => {
+      if (survey.status === 'reported' && survey.catalog && !parks.some(park => park.id === survey.catalog.park.id)) {
+        parks.push(survey.catalog.park);
+      }
+    });
+    return parks;
+  }
+
+  let workbookRefresh = 0;
+  async function refreshWorkbook() {
+    const request = ++workbookRefresh;
+    const status = document.getElementById('loading-status');
+    status.hidden = false;
+    status.textContent = 'Uppdaterar checklistor…';
+    elParksListContainer.inert = true;
+    try {
+      const config = await readConfiguration();
+      if (request !== workbookRefresh || appState.currentScreen !== 'parks') return;
+      FEATURE_TYPES = config.featureTypes;
+      MUNICIPAL_PARKS = config.parks;
+      reconcileInspections();
+      renderParksList();
+      updateGlobalStats();
+      status.textContent = config.warning || '';
+      status.hidden = !config.warning;
+    } catch (_) {
+      if (request !== workbookRefresh || appState.currentScreen !== 'parks') return;
+      status.textContent = 'Kunde inte uppdatera checklistorna. Senast inlästa underlag används.';
+    } finally {
+      if (request === workbookRefresh) elParksListContainer.inert = false;
+    }
+  }
+
   function getParkSurvey(parkId) {
     if (!appState.surveyData[parkId]) {
       appState.surveyData[parkId] = {
@@ -257,7 +322,7 @@
     let issues = 0;
     let answered = 0;
     let checks = 0;
-    let started = false;
+    let started = Boolean(getParkSurvey(parkId).startedAt);
 
     park.featureIds.forEach(fId => {
       const featStat = getFeatureStatus(parkId, fId);
@@ -283,7 +348,7 @@
     let completedParks = 0;
     let totalIssues = 0;
 
-    MUNICIPAL_PARKS.forEach(park => {
+    listedParks().forEach(park => {
       const prog = calculateParkProgress(park.id);
       const survey = getParkSurvey(park.id);
       if (survey.status === "reported") {
@@ -292,7 +357,7 @@
       totalIssues += prog.issues;
     });
 
-    elStatTotal.textContent = MUNICIPAL_PARKS.length;
+    elStatTotal.textContent = listedParks().length;
     elStatCompleted.textContent = completedParks;
     elStatIssues.textContent = totalIssues;
   }
@@ -351,6 +416,7 @@
       elScreenParks.classList.add("active");
       renderParksList();
       updateGlobalStats();
+      refreshWorkbook();
 
     } else if (screen === "overview") {
       const park = getPark(params.parkId || appState.selectedParkId);
@@ -391,7 +457,7 @@
 
   // --- SKÄRM 1: LEKPLATSLISTA ---
   function renderParksList() {
-    const sortedParks = [...MUNICIPAL_PARKS].sort((a, b) => a.name.localeCompare(b.name, "sv"));
+    const sortedParks = listedParks().sort((a, b) => a.name.localeCompare(b.name, "sv"));
     elParksListContainer.innerHTML = sortedParks.map(park => {
       park = getPark(park.id);
       const prog = calculateParkProgress(park.id);
@@ -525,19 +591,21 @@
 
       return `
         <div class="control-point-card ${cardStateClass}" id="card-point-${idx}">
-          <span class="point-number" aria-label="Kontroll ${idx + 1}">${idx + 1}</span>
           <div class="point-text">${escapeHtml(pointText)}</div>
           <div class="toggle-group">
             <button type="button" class="toggle-btn btn-ok ${isOk ? 'selected' : ''}" data-idx="${idx}" data-val="ok" aria-pressed="${isOk}">
               <span>✓</span> OK
             </button>
             <button type="button" class="toggle-btn btn-issue ${isIssue ? 'selected' : ''}" data-idx="${idx}" data-val="issue" aria-pressed="${isIssue}">
-              <span>⚠</span> ANMÄRKNING
+              <span>⚠</span> Anmärkning
             </button>
           </div>
           <div class="defect-box ${isIssue ? 'visible' : ''}" id="defect-box-${idx}">
-            <label class="defect-label" for="defect-text-${idx}">Beskriv anmärkningen:</label>
-            <textarea id="defect-text-${idx}" class="defect-textarea" data-idx="${idx}" placeholder="t.ex. Lös bult, 3 cm för hög kant, trasig bräda...">${escapeHtml(ans.note)}</textarea>
+            <div id="defect-editor-${idx}" class="defect-editor" data-idx="${idx}">
+              <textarea id="defect-text-${idx}" class="defect-textarea" data-idx="${idx}" aria-label="Beskriv anmärkningen för kontroll ${idx + 1}" aria-required="true" aria-invalid="${!ans.note.trim()}" aria-describedby="defect-help-${idx}" ${ans.note.trim() ? 'readonly' : ''} placeholder="Beskriv anmärkningen…">${escapeHtml(ans.note)}</textarea>
+              <p id="defect-help-${idx}" class="defect-help" ${ans.note.trim() ? 'hidden' : ''}>Beskriv anmärkningen för att bli klar.</p>
+              <div class="defect-actions"><button type="button" id="defect-action-${idx}" class="secondary-btn defect-action" data-idx="${idx}">${ans.note.trim() ? 'Ändra' : 'Klar'}</button></div>
+            </div>
           </div>
         </div>
       `;
@@ -547,11 +615,11 @@
       btn.addEventListener("click", () => {
         const idx = parseInt(btn.getAttribute("data-idx"), 10);
         const val = btn.getAttribute("data-val");
+        if (currentFormAnswers[idx].status === val) return;
         const card = document.getElementById(`card-point-${idx}`);
         const defectBox = document.getElementById(`defect-box-${idx}`);
         const okBtn = card.querySelector(".btn-ok");
         const issueBtn = card.querySelector(".btn-issue");
-        const textarea = defectBox.querySelector("textarea");
 
         currentFormAnswers[idx].status = val;
         okBtn.setAttribute('aria-pressed', String(val === 'ok'));
@@ -570,7 +638,7 @@
           defectBox.classList.add("visible");
           card.classList.remove("state-ok");
           card.classList.add("state-issue");
-          setTimeout(() => textarea.focus(), 100);
+          setDefectEditing(idx, true, true);
         }
       });
     });
@@ -579,9 +647,46 @@
       tx.addEventListener("input", (e) => {
         const idx = parseInt(tx.getAttribute("data-idx"), 10);
         currentFormAnswers[idx].note = e.target.value;
+        updateDefectValidity(idx);
         saveDraft();
       });
     });
+    elControlPointsContainer.querySelectorAll('.defect-action').forEach(button => {
+      button.addEventListener('click', () => {
+        const idx = Number(button.dataset.idx);
+        const textarea = document.getElementById(`defect-text-${idx}`);
+        if (textarea.readOnly) {
+          setDefectEditing(idx, true, true);
+        } else if (!currentFormAnswers[idx].note.trim()) {
+          updateDefectValidity(idx);
+          textarea.focus();
+        } else {
+          setDefectEditing(idx, false, true);
+        }
+      });
+    });
+    elControlPointsContainer.querySelectorAll('.defect-editor').forEach(editor => {
+      editor.addEventListener('focusout', event => {
+        if (editor.contains(event.relatedTarget)) return;
+        const idx = Number(editor.dataset.idx);
+        if (currentFormAnswers[idx].note.trim()) setDefectEditing(idx, false);
+      });
+    });
+  }
+
+  function updateDefectValidity(idx) {
+    const invalid = !currentFormAnswers[idx].note.trim();
+    document.getElementById(`defect-help-${idx}`).hidden = !invalid;
+    document.getElementById(`defect-text-${idx}`).setAttribute('aria-invalid', String(invalid));
+  }
+
+  function setDefectEditing(idx, editing, focus = false) {
+    const textarea = document.getElementById(`defect-text-${idx}`);
+    const button = document.getElementById(`defect-action-${idx}`);
+    textarea.readOnly = !editing;
+    button.textContent = editing ? 'Klar' : 'Ändra';
+    updateDefectValidity(idx);
+    if (focus) (editing ? textarea : button).focus();
   }
 
   // --- RAPPORTGENERERING & E-POST ---
@@ -792,11 +897,13 @@
   }
 
   function startNewSurvey() {
-    const park = getPark(appState.selectedParkId);
+    const park = MUNICIPAL_PARKS.find(item => item.id === appState.selectedParkId);
+    if (!park) { showToast('Lekplatsen finns inte längre i underlaget.'); return; }
     if (!park || !confirm('Starta en ny kontroll? Den nuvarande kontrollen sparas i historiken.')) return;
     const previous = getParkSurvey(park.id);
+    const previousReport = generateReportText(getPark(park.id));
     appState.surveyData[park.id] = {status: 'not-started', features: {}, lastUpdated: null,
-      history: [...(previous.history || []), {report: generateReportText(park),
+      history: [...(previous.history || []), {report: previousReport,
         status: previous.status, reportedAt: previous.reportedAt || null,
         archivedAt: new Date().toISOString()}]};
     if (!persistData()) { appState.surveyData[park.id] = previous; return; }
@@ -860,13 +967,14 @@
 
   async function start() {
     try {
-      await loadConfiguration();
+      const config = await loadConfiguration();
       init();
+      document.getElementById('loading-status').textContent = config.warning || '';
+      document.getElementById('loading-status').hidden = !config.warning;
     } catch (error) {
       document.getElementById('loading-status').textContent = `Kunde inte läsa konfigurationen: ${error.message} Kontrollera Excel-filen och ladda om sidan.`;
       return;
     }
-    document.getElementById('loading-status').hidden = true;
   }
 
   if (document.readyState === "loading") {

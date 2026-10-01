@@ -1,5 +1,21 @@
 # Playground inspection app: QA report
 
+## Follow-up: stable issue field (asset version 25)
+
+The edit/read split was replaced with one outlined textarea. Klar or valid focus loss makes it read-only with a grey background; the same right-aligned button becomes Ändra. Recorded issues use amber, and missing descriptions use red validation styling. Repeated taps on the selected answer do nothing; switching from OK to Anmärkning opens editing with the retained description.
+
+Playwright verified equal textarea height and unchanged next-card position before/after Klar, automatic read-only mode on blur, next-button click preservation, empty validation, reload, retained text on answer switching, and 320px viewport fit. [18-stable-issue-editor.png](screenshots/18-stable-issue-editor.png) shows a finished description and an empty editor.
+
+## Follow-up: issue editor (asset version 24)
+
+Control-point numbering was removed. Playwright verified Klar and Ändra, automatic closing when valid text loses focus, keeping blank/whitespace descriptions open, progress updating before Klar, keyboard Tab, reload persistence and safe text rendering. A pointer regression found during testing was fixed: editor collapse now waits until pointer completion so clicking the next check is not swallowed. [17-issue-read-view.png](screenshots/17-issue-read-view.png) shows a completed issue description as text.
+
+## Follow-up: workbook reconciliation (asset version 22)
+
+After checkpoint commit `9ad521d`, a separate browser context tested simulated workbook responses without editing the actual Excel file. Returning to the playground list refreshed the workbook, preserved reordered OK/issue answers, reset a changed control, added a control and assigned element, and updated progress. Invalid workbook refreshes and startup reused the last validated offline copy. Offline form reload and list refresh also passed. [16-reconciled-checklist.png](screenshots/16-reconciled-checklist.png) shows the retained answers beside newly unanswered controls.
+
+Unit tests additionally cover frozen reported inspections, starting a new inspection from the latest playground definition, preserving the archived report's original checklist, and rolling back reconciliation when localStorage writes fail.
+
 Tested 1 October 2026 using Playwright Chromium on localhost, with app asset version 21. Screenshots and results describe the current uncommitted implementation.
 
 ## Result

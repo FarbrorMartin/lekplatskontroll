@@ -32,10 +32,15 @@ Spara som `.xlsx`, inte det äldre formatet `.xls`.
 
 Lekplatsens namn identifierar dess sparade kontroller. Sortering i Excel påverkar
 inte sparade svar, men ett namnbyte gör att lekplatsen behandlas som en ny lekplats.
-Även element identifieras med sina namn; ett namnbyte skapar ett nytt element för
-kommande kontroller. Påbörjade kontroller behåller en kopia av lekplatsens element
-och kontrollistor. Ändringar och omsorteringar i Excel påverkar därför endast nya
-kontroller.
+Även element identifieras med sina namn; ett namnbyte skapar ett nytt element.
+Appen hämtar Excel-underlaget utan HTTP-cache när den öppnas och när användaren
+återvänder till lekplatslistan. Inne i en lekplats hålls underlaget stabilt.
+Kontroller som ännu inte har markerats som rapporterade uppdateras då från Excel:
+svar behålls för samma elementnamn och kontrolltext, även vid omsortering.
+Ändrade eller borttagna kontrolltexter förlorar sina svar; nya element och kontroller
+läggs till obesvarade. Inledande och avslutande blanksteg ignoreras vid textmatchning.
+Rapporterade kontroller behåller sitt tidigare underlag och sina svar.
+En ny kontroll använder alltid det senast inlästa underlaget.
 
 Exempel på element är Gångbro, Spång, Skulptur och Lekhus. Appen måste köras via
 en webbserver; att öppna `index.html` direkt från datorn fungerar inte eftersom
@@ -72,6 +77,11 @@ Utkastet finns kvar om du laddar om sidan eller lämnar formuläret. Ett element
 räknas som klart först när alla kontroller är besvarade, varje anmärkning
 har en beskrivning. Ingen separat sparknapp behövs.
 
+Anmärkningar öppnas i ett textfält. Med giltig text avslutas redigeringen genom
+Klar eller när fokus lämnar redigeringsområdet. Samma textfält blir då skrivskyddat
+med grå bakgrund och knappen Ändra, utan att ändra storlek. Tomma beskrivningar stannar öppna med en uppmaning att
+fylla i text. Svaren sparas och räknas i progressen direkt, även utan att trycka Klar.
+
 Besiktningsmannen registreras vid det första svaret. Rapportens datum är
 tidpunkten för den senaste ändringen av kontrollen. Om du ändrar besiktningsmannens namn
 gäller valet för nya kontroller. Ett namn måste anges innan en kontroll kan påbörjas.
@@ -93,6 +103,10 @@ efter det första besöket med internetanslutning. Låt installationen bli klar
 innan du förlitar dig på att appen kan öppnas utan internet. Detta stöd gäller
 inte när du öppnar filen direkt eller använder HTTP via datorns lokala IP-adress
 på telefonen.
+
+Excel-underlaget sparas separat för användning utan internet först efter att hela
+arbetsboken har validerats. Utan anslutning används den sparade kopian och appen
+visar detta i lekplatslistan. En ogiltig uppdatering ändrar inte befintliga svar.
 
 För att skicka mejl behövs fortfarande en mejlapp och internetanslutning.
 Långa rapporter via `mailto:` bör testas på de telefoner och mejlappar som ska

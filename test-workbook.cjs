@@ -61,7 +61,7 @@ const error = workbook(); error.Sheets.Element.A2 = {t: 'e', v: 23};
 assert.throws(() => ctx.configurationFromWorkbook(error), /Excel-fel/);
 const formula = workbook(); formula.Sheets.Element.B2 = {t: 's', f: 'A2'};
 assert.throws(() => ctx.configurationFromWorkbook(formula), /beräknat värde/);
-ctx.fetch = async () => ({ok: true, arrayBuffer: async () => bytes});
+ctx.fetch = async () => ({ok: true, clone: () => ({arrayBuffer: async () => bytes})});
 ctx.loadConfiguration().then(() => {
   // Standalone reader does not require a CDN, Node API, or browser-specific file path.
   assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);

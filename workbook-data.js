@@ -66,11 +66,36 @@ function configurationFromWorkbook(workbook) {
     readWorkbookRows(workbook, 'Element'));
 }
 
+async function readConfiguration() {
+  async function parse(response) {
+    if (!response.ok) throw new Error(`Kunde inte läsa lekplatskontroll.xlsx (${response.status}).`);
+    return configurationFromWorkbook(XLSX.read(await response.clone().arrayBuffer(), {type: 'array'}));
+  }
+  let networkFailed = true;
+  try {
+    const response = await fetch('./data/lekplatskontroll.xlsx', {cache: 'no-store'});
+    networkFailed = false;
+    const config = await parse(response);
+    if (typeof caches !== 'undefined') {
+      try {
+        const cache = await caches.open('lekplatskontroll-workbook');
+        await cache.put('./data/lekplatskontroll.xlsx', response);
+      } catch (_) { /* An unavailable offline cache must not block online use. */ }
+    }
+    return {...config, offline: false};
+  } catch (error) {
+    const cache = typeof caches !== 'undefined' && await caches.open('lekplatskontroll-workbook');
+    const response = cache && await cache.match('./data/lekplatskontroll.xlsx');
+    if (!response) throw error;
+    const config = await parse(response);
+    return {...config, offline: networkFailed,
+      warning: networkFailed ? 'Offline · sparat underlag' : 'Kunde inte uppdatera checklistorna. Senast giltiga underlag används.'};
+  }
+}
+
 async function loadConfiguration() {
-  const response = await fetch('./data/lekplatskontroll.xlsx', {cache: 'no-cache'});
-  if (!response.ok) throw new Error(`Kunde inte läsa lekplatskontroll.xlsx (${response.status}).`);
-  const workbook = XLSX.read(await response.arrayBuffer(), {type: 'array'});
-  const config = configurationFromWorkbook(workbook);
+  const config = await readConfiguration();
   FEATURE_TYPES = config.featureTypes;
   MUNICIPAL_PARKS = config.parks;
+  return config;
 }
