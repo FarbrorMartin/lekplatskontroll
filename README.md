@@ -111,8 +111,11 @@ publicera appen på GitHub Pages, Firebase Hosting eller annan statisk webbhosti
 
 ## Kör lokalt
 
-Starta en webbserver från appens katalog med `python -m http.server 8080` och
-öppna sedan `http://localhost:8080`. För att testa på en telefon i samma
+På Windows: dubbelklicka på `launch.bat`. Den startar en webbserver och öppnar
+`http://localhost:8080` i webbläsaren. Ange en annan port med `launch.bat 8081`.
+Stoppa servern med Ctrl+C. På andra system: starta en webbserver från appens
+katalog med `python -m http.server 8080` och öppna `http://localhost:8080`.
+Båda sätten kräver Python. För att testa på en telefon i samma
 Wi-Fi-nätverk använder du datorns IP-adress i stället för localhost.
 Publicera appen via HTTPS för att kunna använda den utan internet på telefoner.
 
