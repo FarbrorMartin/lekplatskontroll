@@ -2,10 +2,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const XLSX = require('./vendor/xlsx.mini.min.js');
-const ctx = vm.createContext({XLSX});
+const {fixtureWorkbookBytes} = require('./test-fixture.cjs');
+const ctx = vm.createContext({XLSX, setTimeout, clearTimeout});
 vm.runInContext(fs.readFileSync('parks-data.js', 'utf8'), ctx);
 vm.runInContext(fs.readFileSync('workbook-data.js', 'utf8'), ctx);
-const bytes = fs.readFileSync('data/lekplatskontroll.xlsx');
+const bytes = fixtureWorkbookBytes();
 const workbook = () => XLSX.read(bytes);
 const rows = name => ctx.readWorkbookRows(workbook(), name);
 const parks = rows('Lekplatsmatris'), checks = rows('Element');
@@ -61,9 +62,28 @@ const error = workbook(); error.Sheets.Element.A2 = {t: 'e', v: 23};
 assert.throws(() => ctx.configurationFromWorkbook(error), /Excel-fel/);
 const formula = workbook(); formula.Sheets.Element.B2 = {t: 's', f: 'A2'};
 assert.throws(() => ctx.configurationFromWorkbook(formula), /beräknat värde/);
-ctx.fetch = async () => ({ok: true, clone: () => ({arrayBuffer: async () => bytes})});
-ctx.loadConfiguration().then(() => {
-  // Standalone reader does not require a CDN, Node API, or browser-specific file path.
+const okResponse = () => ({ok: true, clone: () => ({arrayBuffer: async () => bytes})});
+const stored = [];
+ctx.fetch = async () => okResponse();
+ctx.caches = {open: async () => ({match: async () => stored.at(-1), put: async (_, response) => { stored.push({arrayBuffer: async () => bytes}); }})};
+(async () => {
+  // Without a saved copy the workbook is fetched and saved for offline use.
+  await ctx.loadConfiguration();
   assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);
-  console.log('Passed: XLSX reading, named tabs/columns, element lists of different lengths, shared wording, blank cells, X assignments, added playgrounds, duplicates, missing headers, mismatched elements, empty checklists, Excel errors and missing formula values.');
-}).catch(error => { console.error(error); process.exitCode = 1; });
+  assert.equal(stored.length, 1);
+  // With a saved copy, starting the app does not use the network.
+  ctx.fetch = async () => { throw new Error('network used'); };
+  await ctx.loadConfiguration();
+  assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);
+  // A failed update keeps the previous forms.
+  await assert.rejects(ctx.updateConfiguration(), /Ingen kontakt med servern/);
+  ctx.fetch = async () => ({ok: false, status: 404});
+  await assert.rejects(ctx.updateConfiguration(), /404/);
+  const broken = workbook(); broken.Sheets.Lekplatsmatris.B2 = {t: 's', v: 'Ja'};
+  const brokenBytes = XLSX.write(broken, {type: 'buffer', bookType: 'xlsx'});
+  ctx.fetch = async () => ({ok: true, clone: () => ({arrayBuffer: async () => brokenBytes})});
+  await assert.rejects(ctx.updateConfiguration(), /Använd X/);
+  assert.equal(stored.length, 1);
+  assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);
+  console.log('Passed: XLSX reading, named tabs/columns, element lists of different lengths, shared wording, blank cells, X assignments, added playgrounds, duplicates, missing headers, mismatched elements, empty checklists, Excel errors, missing formula values, cache-first loading and failed updates.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -57,11 +57,14 @@
   const elSettingEmail = document.getElementById("setting-recipient-email");
   const elBtnSaveSettings = document.getElementById("btn-save-settings");
   const elBtnClearAllData = document.getElementById("btn-clear-all-data");
+  const elBtnUpdateForms = document.getElementById("btn-update-forms");
+  const elUpdateFormsStatus = document.getElementById("update-forms-status");
 
   const elToast = document.getElementById("toast");
 
   let currentFormAnswers = {};
-  let storageReadFailed = false;
+  // Reported parks ask once per session before their answers can be changed again.
+  const unlockedParks = new Set();
 
   // --- INITIALISERING ---
   function init() {
@@ -104,30 +107,36 @@
   }
 
   function loadStorage() {
+    const isObject = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+    const isSurveyData = value => isObject(value) &&
+      Object.values(value).every(survey => isObject(survey) && isObject(survey.features));
+    appState.surveyData = readStored(STORAGE_KEY_DATA, isSurveyData) || {};
+    appState.settings = { ...DEFAULT_SETTINGS, ...readStored(STORAGE_KEY_SETTINGS, isObject) };
+    Object.keys(DEFAULT_SETTINGS).forEach(key => {
+      if (typeof appState.settings[key] !== 'string') appState.settings[key] = DEFAULT_SETTINGS[key];
+    });
+  }
+
+  // Local storage is the only copy, so unreadable data is discarded and the app starts fresh.
+  function readStored(key, isValid) {
+    let saved;
     try {
-      const savedData = localStorage.getItem(STORAGE_KEY_DATA);
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid survey data');
-        Object.values(parsed).forEach(survey => {
-          if (!survey || typeof survey.features !== 'object' || !survey.features) throw new Error('Invalid survey');
-        });
-        appState.surveyData = parsed;
-      }
-      const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        appState.settings = { ...DEFAULT_SETTINGS, ...parsed };
-        if (typeof appState.settings.inspectorName !== "string") appState.settings.inspectorName = DEFAULT_SETTINGS.inspectorName;
-      }
-    } catch (e) {
-      storageReadFailed = true;
-      storageWarning('Kunde inte läsa sparad data. Lagringen skrivs inte över. Kontrollera lagringen innan du fortsätter.');
+      saved = localStorage.getItem(key);
+    } catch (_) {
+      storageWarning('Kunde inte läsa sparad data.');
+      return null;
     }
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      if (isValid(parsed)) return parsed;
+    } catch (_) { /* Handled below. */ }
+    try { localStorage.removeItem(key); } catch (_) { /* The warning below still applies. */ }
+    storageWarning('Sparad data kunde inte läsas och har rensats.');
+    return null;
   }
 
   function persistData() {
-    if (storageReadFailed) return false;
     try {
       localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(appState.surveyData));
       return true;
@@ -185,8 +194,8 @@
     const park = getPark(appState.selectedParkId);
     const type = getFeatureType(park && park.id, appState.selectedFeatureId);
     if (!park || !type) return;
-    const survey = getParkSurvey(park.id);
-    if (!survey.inspectorName && !appState.settings.inspectorName.trim()) return;
+    if (!getParkSurvey(park.id).inspectorName && !appState.settings.inspectorName.trim()) return;
+    const survey = startParkSurvey(park.id);
     snapshotSurvey(park, survey);
     survey.inspectorName ||= appState.settings.inspectorName;
     survey.startedAt ||= new Date().toISOString();
@@ -224,15 +233,16 @@
   }
 
   function reconcileInspections() {
-    if (storageReadFailed) return false;
     const previous = appState.surveyData;
     const next = JSON.parse(JSON.stringify(previous));
     const key = text => text.trim().normalize('NFC');
     Object.entries(next).forEach(([parkId, survey]) => {
+      // Without a checklist copy no answer has been saved.
+      if (!survey.catalog) { delete next[parkId]; return; }
       if (survey.status === 'reported') return;
       const park = MUNICIPAL_PARKS.find(item => item.id === parkId);
-      if (!park) { delete next[parkId]; return; }
-      if (!survey.catalog) return;
+      // Parks missing from Excel keep their answers hidden, in case the removal was a mistake.
+      if (!park) return;
       const features = Object.create(null);
       park.featureIds.forEach(id => {
         const type = FEATURE_TYPES[id];
@@ -252,49 +262,14 @@
     return true;
   }
 
-  function listedParks() {
-    const parks = [...MUNICIPAL_PARKS];
-    Object.values(appState.surveyData).forEach(survey => {
-      if (survey.status === 'reported' && survey.catalog && !parks.some(park => park.id === survey.catalog.park.id)) {
-        parks.push(survey.catalog.park);
-      }
-    });
-    return parks;
-  }
-
-  let workbookRefresh = 0;
-  async function refreshWorkbook() {
-    const request = ++workbookRefresh;
-    const status = document.getElementById('loading-status');
-    status.hidden = false;
-    status.textContent = 'Uppdaterar checklistor…';
-    elParksListContainer.inert = true;
-    try {
-      const config = await readConfiguration();
-      if (request !== workbookRefresh || appState.currentScreen !== 'parks') return;
-      FEATURE_TYPES = config.featureTypes;
-      MUNICIPAL_PARKS = config.parks;
-      reconcileInspections();
-      renderParksList();
-      updateGlobalStats();
-      status.textContent = config.warning || '';
-      status.hidden = !config.warning;
-    } catch (_) {
-      if (request !== workbookRefresh || appState.currentScreen !== 'parks') return;
-      status.textContent = 'Kunde inte uppdatera checklistorna. Senast inlästa underlag används.';
-    } finally {
-      if (request === workbookRefresh) elParksListContainer.inert = false;
-    }
-  }
+  const EMPTY_SURVEY = Object.freeze({status: "not-started", features: Object.freeze({}), lastUpdated: null});
 
   function getParkSurvey(parkId) {
-    if (!appState.surveyData[parkId]) {
-      appState.surveyData[parkId] = {
-        status: "not-started",
-        features: {},
-        lastUpdated: null
-      };
-    }
+    return appState.surveyData[parkId] || EMPTY_SURVEY;
+  }
+
+  function startParkSurvey(parkId) {
+    appState.surveyData[parkId] ||= {status: "not-started", features: {}, lastUpdated: null};
     return appState.surveyData[parkId];
   }
 
@@ -348,7 +323,7 @@
     let completedParks = 0;
     let totalIssues = 0;
 
-    listedParks().forEach(park => {
+    MUNICIPAL_PARKS.forEach(park => {
       const prog = calculateParkProgress(park.id);
       const survey = getParkSurvey(park.id);
       if (survey.status === "reported") {
@@ -357,7 +332,7 @@
       totalIssues += prog.issues;
     });
 
-    elStatTotal.textContent = listedParks().length;
+    elStatTotal.textContent = MUNICIPAL_PARKS.length;
     elStatCompleted.textContent = completedParks;
     elStatIssues.textContent = totalIssues;
   }
@@ -416,7 +391,6 @@
       elScreenParks.classList.add("active");
       renderParksList();
       updateGlobalStats();
-      refreshWorkbook();
 
     } else if (screen === "overview") {
       const park = getPark(params.parkId || appState.selectedParkId);
@@ -424,9 +398,6 @@
 
       appState.selectedParkId = park.id;
       appState.selectedFeatureId = null;
-
-
-      const prog = calculateParkProgress(park.id);
 
       elScreenParkOverview.classList.add("active");
       elBarParkOverview.style.display = "flex";
@@ -437,6 +408,12 @@
       const park = getPark(params.parkId || appState.selectedParkId);
       const featureType = getFeatureType(park && park.id, params.featureId || appState.selectedFeatureId);
       if (!park || !featureType) return navigateTo("overview", { parkId: appState.selectedParkId });
+      if (!confirmEditReported(park.id)) {
+        if (!recordHistory) {
+          window.history.replaceState({app: 'lekplatskontroll', screen: 'overview', parkId: park.id, parent: {screen: 'parks'}}, '');
+        }
+        return navigateTo("overview", { parkId: park.id }, false);
+      }
 
       appState.selectedParkId = park.id;
       appState.selectedFeatureId = featureType.id;
@@ -457,7 +434,7 @@
 
   // --- SKÄRM 1: LEKPLATSLISTA ---
   function renderParksList() {
-    const sortedParks = listedParks().sort((a, b) => a.name.localeCompare(b.name, "sv"));
+    const sortedParks = [...MUNICIPAL_PARKS].sort((a, b) => a.name.localeCompare(b.name, "sv"));
     elParksListContainer.innerHTML = sortedParks.map(park => {
       park = getPark(park.id);
       const prog = calculateParkProgress(park.id);
@@ -502,9 +479,7 @@
   function renderParkOverview(park) {
 
     const prog = calculateParkProgress(park.id);
-    const survey = getParkSurvey(park.id);
-    document.getElementById('btn-new-survey').hidden = !prog.started && !survey.history?.length;
-    document.getElementById('btn-history').hidden = !(survey.history?.length);
+    document.getElementById('btn-new-survey').hidden = !prog.started;
 
     if (prog.completed === prog.total && prog.total > 0) {
       elBtnSendReport.disabled = false;
@@ -795,18 +770,22 @@
       </section>`;
   }
 
+  function reportSubject(park) {
+    const issues = calculateParkProgress(park.id).issues;
+    const date = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
+    const summary = issues === 0 ? 'Allt OK' : `${issues} ${issues === 1 ? 'anmärkning' : 'anmärkningar'}`;
+    return `[Lekplatskontroll] ${park.name} (${summary}) - ${date}`;
+  }
+
   function openReportModal() {
     const park = getPark(appState.selectedParkId);
     if (!park) return;
 
     const prog = calculateParkProgress(park.id);
     if (!prog.total || prog.completed !== prog.total) return;
-    const formattedDate = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
-    const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' anmärkningar'}) - ${formattedDate}`;
-    const recipient = appState.settings.recipientEmail;
 
-    elReportToDisplay.textContent = recipient;
-    elReportSubjectDisplay.textContent = subject;
+    elReportToDisplay.textContent = appState.settings.recipientEmail;
+    elReportSubjectDisplay.textContent = reportSubject(park);
     renderReportPreview(park);
 
     elModalReportSummary.className = prog.issues > 0 ? "report-summary-box has-issues" : "report-summary-box";
@@ -823,13 +802,9 @@
     const park = getPark(appState.selectedParkId);
     if (!park) return;
 
-    const prog = calculateParkProgress(park.id);
-    const reportText = generateReportText(park);
-    const formattedDate = reportDate(getParkSurvey(park.id)).toLocaleDateString("sv-SE");
-    const subject = `[Lekplatskontroll] ${park.name} (${prog.issues === 0 ? 'Allt OK' : prog.issues + ' anmärkningar'}) - ${formattedDate}`;
-    const recipient = appState.settings.recipientEmail;
-
-    const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(reportText)}`;
+    // The @ stays unencoded; some mail apps do not decode %40 in the address.
+    const recipient = appState.settings.recipientEmail.split('@').map(encodeURIComponent).join('@');
+    const mailtoUrl = `mailto:${recipient}?subject=${encodeURIComponent(reportSubject(park))}&body=${encodeURIComponent(generateReportText(park))}`;
 
     window.location.href = mailtoUrl;
     showToast("Öppnar e-postklient...");
@@ -874,10 +849,11 @@
     if (!confirm('Kom ihåg att du behöver klicka Skicka i mejlappen för att rapporten ska skickas. Annars skickas den inte.')) return;
     const park = getPark(appState.selectedParkId);
     if (park) {
-      const parkSurvey = getParkSurvey(park.id);
+      const parkSurvey = appState.surveyData[park.id];
       parkSurvey.status = "reported";
       parkSurvey.reportedAt = new Date().toISOString();
       if (!persistData()) return;
+      unlockedParks.delete(park.id);
     }
     closeModal(elModalReport);
     showToast("Rapporten har markerats som skickad!");
@@ -886,6 +862,7 @@
 
   // --- INSTÄLLNINGAR ---
   function openSettingsModal() {
+    elUpdateFormsStatus.textContent = 'Hämtar lekplatser och kontroller från Excel-filen. Kräver internet.';
     elSettingEmail.value = appState.settings.recipientEmail;
     openModal(elModalSettings);
   }
@@ -917,7 +894,6 @@
     appState.surveyData = {};
     appState.settings = settings;
     currentFormAnswers = {};
-    storageReadFailed = false;
     elInspectorName.value = '';
     elInspectorName.setCustomValidity('');
     document.getElementById('storage-warning').hidden = true;
@@ -926,12 +902,32 @@
     showToast('Inspektionsdata har rensats.');
   }
 
+  async function updateForms() {
+    elBtnUpdateForms.disabled = true;
+    elUpdateFormsStatus.textContent = 'Hämtar formulär…';
+    try {
+      await updateConfiguration();
+      reconcileInspections();
+      renderParksList();
+      updateGlobalStats();
+      elUpdateFormsStatus.textContent = 'Formulären är uppdaterade.';
+    } catch (error) {
+      elUpdateFormsStatus.textContent = `Kunde inte läsa in formulären. ${error.message} Tidigare formulär används.`;
+    } finally {
+      elBtnUpdateForms.disabled = false;
+    }
+  }
+
+  function confirmEditReported(parkId) {
+    if (getParkSurvey(parkId).status !== 'reported' || unlockedParks.has(parkId)) return true;
+    if (!confirm('Den här lekplatsen är redan markerad som skickad. Vill du öppna den för redigering igen?')) return false;
+    unlockedParks.add(parkId);
+    return true;
+  }
+
   // --- HÄNDELSEKOPPLINGAR ---
   let modalOpener = null;
   function openModal(modal) {
-    showModal(modal);
-  }
-  function showModal(modal) {
     modalOpener = document.activeElement;
     modal.classList.add('active');
     document.querySelector('.app-container').inert = true;
@@ -972,14 +968,6 @@
       closeModal(resetModal);
       startNewSurvey(true);
     });
-    document.getElementById('btn-history').addEventListener('click', () => {
-      const history = getParkSurvey(appState.selectedParkId).history || [];
-      document.getElementById('history-content').textContent = history.length
-        ? history.map(item => `Arkiverad: ${new Date(item.archivedAt).toLocaleString('sv-SE')}\n${item.report}`).join('\n\n')
-        : 'Inga tidigare kontroller.';
-      openModal(document.getElementById('modal-history'));
-    });
-    document.getElementById('btn-close-history').addEventListener('click', () => closeModal(document.getElementById('modal-history')));
     document.addEventListener('keydown', e => {
       const modal = document.querySelector('.modal-overlay.active');
       if (!modal) return;
@@ -1014,8 +1002,9 @@
     });
     elBtnSaveSettings.addEventListener("click", saveSettings);
     elBtnClearAllData.addEventListener("click", clearAllData);
+    elBtnUpdateForms.addEventListener("click", updateForms);
 
-    [elModalReport, elModalSettings, document.getElementById('modal-history'), resetModal].forEach(modal => {
+    [elModalReport, elModalSettings, resetModal].forEach(modal => {
       modal.addEventListener("click", (e) => {
         if (e.target === modal) {
           closeModal(modal);
@@ -1025,15 +1014,16 @@
   }
 
   async function start() {
+    const status = document.getElementById('loading-status');
     try {
-      const config = await loadConfiguration();
-      init();
-      document.getElementById('loading-status').textContent = config.warning || '';
-      document.getElementById('loading-status').hidden = !config.warning;
+      await loadConfiguration();
     } catch (error) {
-      document.getElementById('loading-status').textContent = `Kunde inte läsa konfigurationen: ${error.message} Kontrollera Excel-filen och ladda om sidan.`;
+      status.textContent = `Kunde inte läsa formulären: ${error.message} Kontrollera internetanslutningen och ladda om sidan.`;
+      document.querySelectorAll('.inspector-bar, .stats-banner, #btn-settings').forEach(el => { el.style.display = 'none'; });
       return;
     }
+    status.hidden = true;
+    init();
   }
 
   if (document.readyState === "loading") {

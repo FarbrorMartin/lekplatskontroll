@@ -29,12 +29,8 @@
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-.survey-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .reset-survey-btn { min-height: 44px; padding: 0 14px; border: 1px solid #d9aaaa; border-radius: var(--radius-sm); background: #fff5f5; color: #9f4545; font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
 .reset-survey-btn:hover { background: #feecec; border-color: #bf8585; }
-.survey-actions:has(button:not([hidden])) { margin-bottom: 16px; }
-.survey-actions:not(:has(button:not([hidden]))) { display: none; }
-.survey-actions button[hidden] { display: none; }
 .issue-count { color: #991b1b; }
 :focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
 #storage-warning { position: fixed; top: 0; left: 0; right: 0; padding: 12px; background: #fee2e2; color: #991b1b; z-index: 200; }

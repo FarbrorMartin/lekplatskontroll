@@ -28,24 +28,29 @@ progress högst upp. På lekplatsens översikt visas den sammanlagda progressen 
 
 Öppna samma lekplats och element för att fortsätta där du slutade. Om du
 vill börja om kan du välja Rensa på lekplatsens översikt.
-Alla svar och tidigare kontroller för den lekplatsen tas bort från appen efter
-bekräftelse, och lekplatsen blir ej påbörjad. Redan skickade mejl påverkas inte.
+Alla svar för den lekplatsen tas bort från appen efter bekräftelse, och
+lekplatsen blir ej påbörjad. Redan skickade mejl påverkas inte. Appen sparar
+inga tidigare kontroller; de skickade mejlen är arkivet.
+
+En lekplats som är markerad som skickad är låst. Om du öppnar ett av dess element
+frågar appen om lekplatsen ska öppnas för redigering igen. Ändrar du sedan ett svar
+blir lekplatsen påbörjad igen och rapporten behöver skickas på nytt.
 
 Om checklistan ändras innan rapporten är skickad kan nya eller ändrade punkter
-behöva besvaras när du nästa gång öppnar appen eller går tillbaka till
-lekplatslistan. Svar på oförändrade punkter finns kvar. Redan rapporterade
-kontroller ändras inte av en ny checklista.
+behöva besvaras efter att du har läst in uppdaterade formulär. Svar på
+oförändrade punkter finns kvar. Redan rapporterade kontroller ändras inte av en
+ny checklista.
 
 ### Inställningar och rensning
 
 Tryck på kugghjulet i lekplatslistan för att ändra mottagande e-postadress.
-Här finns också Rensa inspektionsdata. Du får bekräfta innan pågående och
-slutförda inspektioner, historik och ditt namn tas bort. Mottagaradressen behålls.
+Där finns också Läs in uppdaterade formulär, som hämtar den senaste Excel-filen
+(kräver internet), och Rensa inspektionsdata. Du får bekräfta innan pågående och
+slutförda inspektioner och ditt namn tas bort. Mottagaradressen behålls.
 Rapporter som redan skickats med mejl påverkas inte.
 
 Utan internet kan du använda appen om den tidigare har laddats färdigt med
-internetanslutning. Appen visar då att ett sparat underlag används. För att skicka
-mejl behöver du internet. Om rapporten inte går att öppna i mejlappen kan du
+internetanslutning. För att skicka mejl behöver du internet. Om rapporten inte går att öppna i mejlappen kan du
 välja Kopiera rapporttext och klistra in den i ett mejl själv.
 
 ## Konfiguration i Excel
@@ -72,14 +77,21 @@ Lägg till lekplatser som nya rader med unika namn. Lägg till kontroller direkt
 under elementets rubrik; kontroller behöver inga ID:n. För att lägga till ett
 element skapar du en kolumn med samma rubrik i båda flikarna, skriver dess
 kontroller och markerar vilka lekplatser som har elementet.
-Spara som `.xlsx`, inte det äldre formatet `.xls`.
+Spara som `.xlsx`, inte det äldre formatet `.xls`. Kontrollera filen med
+`node check-workbook.cjs` innan du publicerar den.
 
 Lekplatsens namn identifierar dess sparade kontroller. Sortering i Excel påverkar
 inte sparade svar, men ett namnbyte gör att lekplatsen behandlas som en ny lekplats.
 Även element identifieras med sina namn; ett namnbyte skapar ett nytt element.
-Appen hämtar Excel-underlaget utan HTTP-cache när den öppnas och när användaren
-återvänder till lekplatslistan. Inne i en lekplats hålls underlaget stabilt.
-Kontroller som ännu inte har markerats som rapporterade uppdateras då från Excel:
+En lekplats som tas bort ur Excel visas inte längre och räknas inte i statistiken,
+men dess sparade svar behålls dolda. Läggs lekplatsen tillbaka med samma namn
+visas svaren igen.
+
+Appen använder sin sparade kopia av Excel-underlaget och hämtar det bara från
+servern första gången, eller när användaren trycker Läs in uppdaterade formulär
+i inställningarna. Hämtningen avbryts efter tio sekunder utan svar. En ny fil
+sparas först när den har validerats; annars används de tidigare formulären.
+Kontroller som ännu inte har markerats som rapporterade uppdateras vid inläsningen:
 svar behålls för samma elementnamn och kontrolltext, även vid omsortering.
 Ändrade eller borttagna kontrolltexter förlorar sina svar; nya element och kontroller
 läggs till obesvarade. Inledande och avslutande blanksteg ignoreras vid textmatchning.
@@ -108,7 +120,7 @@ Publicera appen via HTTPS för att kunna använda den utan internet på telefone
 
 För att återställa appen vid testning, öppna den med `?reset=1`, till exempel
 `http://localhost:8080/?reset=1`. Detta tar endast bort appens två localStorage-poster:
-kontroller (inklusive historik och checklistkopior) och inställningar (inklusive namn).
+kontroller (inklusive checklistkopior) och inställningar (inklusive namn).
 Övriga appar, cookies och webbläsarens cache påverkas inte. Parametern tas bort
 från adressen efter återställningen så att nästa omladdning inte rensar igen.
 
@@ -135,22 +147,24 @@ rapporterad först när användaren bekräftar att mejlet har skickats. Att öpp
 mejlappen bekräftar inte att mejlet har levererats. Rapporten kan också kopieras
 till urklipp.
 
-Efter att en rapport har markerats som skickad kan en ny kontroll startas från lekplatsöversikten. Då sparas den föregående
-rapporten som vanlig text i lekplatsens historik och de aktuella svaren töms.
-Historik och utkast finns endast i den här webbläsaren. De tas bort om du rensar
-webbläsardata eller använder appens återställningsfunktion.
+För nästa kontroll av en rapporterad lekplats väljer du Rensa på lekplatsens
+översikt. Sparade svar finns endast i den här webbläsaren. De tas bort om du rensar
+webbläsardata eller använder appens återställningsfunktion. Om sparad data inte
+går att läsa rensas den och appen visar en varning.
 
 ## Användning utan internet och rapporter via mejl
 
 På HTTPS (eller localhost) sparar en service worker appen i webbläsarens cache
 efter det första besöket med internetanslutning. Låt installationen bli klar
-innan du förlitar dig på att appen kan öppnas utan internet. Detta stöd gäller
+innan du förlitar dig på att appen kan öppnas utan internet. Appen öppnas alltid
+från den sparade kopian och hämtar en eventuell ny version i bakgrunden. En
+publicerad uppdatering syns därför från andra gången appen öppnas. Inga
+versionsnummer behöver ändras vid publicering. Detta stöd gäller
 inte när du öppnar filen direkt eller använder HTTP via datorns lokala IP-adress
 på telefonen.
 
 Excel-underlaget sparas separat för användning utan internet först efter att hela
-arbetsboken har validerats. Utan anslutning används den sparade kopian och appen
-visar detta i lekplatslistan. En ogiltig uppdatering ändrar inte befintliga svar.
+arbetsboken har validerats. En ogiltig uppdatering ändrar inte befintliga svar.
 
 För att skicka mejl behövs fortfarande en mejlapp och internetanslutning.
 Långa rapporter via `mailto:` bör testas på de telefoner och mejlappar som ska
@@ -161,11 +175,13 @@ till urklipp.
 
 Kör `node test-app.cjs` för att kontrollera återställning av utkast,
 besiktningsman, obligatoriska beskrivningar, säker visning av text,
-rapporthistorik och hantering av lagringsfel. Kör `node --check app.js` och
+låsning av rapporterade lekplatser och hantering av lagringsfel. Kör `node --check app.js` och
 `node --check sw.js` för syntaxkontroll.
 
 Kör `node test-workbook.cjs` för att testa läsning av XLSX-filer och validering
-av Excel-underlaget.
+av Excel-underlaget. Båda testerna använder en liten arbetsbok som skapas i
+`test-fixture.cjs`, så de påverkas inte av ändringar i den riktiga Excel-filen.
+Kör `node check-workbook.cjs` för att validera `data/lekplatskontroll.xlsx`.
 
 De automatiska testerna använder en simulerad DOM. Mobilens layout och
 överföringen till den vanliga mejlappen behöver testas på riktiga enheter.

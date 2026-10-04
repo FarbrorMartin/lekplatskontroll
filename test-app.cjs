@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const {fixtureWorkbookBytes} = require('./test-fixture.cjs');
 const nodes = new Map();
 function node(id) {
   if (!nodes.has(id)) nodes.set(id, {textContent: '', value: '', style: {}, hidden: true,
@@ -33,13 +34,13 @@ const context = vm.createContext({console, Date, URL, setTimeout: () => 0, clear
 });
 vm.runInContext(fs.readFileSync('parks-data.js', 'utf8'), context);
 vm.runInContext(fs.readFileSync('workbook-data.js', 'utf8'), context);
-context.workbookBytes = fs.readFileSync('data/lekplatskontroll.xlsx');
+context.workbookBytes = fixtureWorkbookBytes();
 vm.runInContext('const config = configurationFromWorkbook(XLSX.read(workbookBytes)); FEATURE_TYPES = config.featureTypes; MUNICIPAL_PARKS = config.parks;', context);
 let source = fs.readFileSync('app.js', 'utf8');
 source = source.replace('  if (document.readyState === "loading")', `
   globalThis.test = {init, appState, saveDraft, getFeatureStatus, loadStorage, resetStorageFromUrl, clearAllData, reconcileInspections,
     generateReportText, renderReportPreview, calculateParkProgress, startNewSurvey, finishAndClosePark,
-    escapeHtml, persistData, getPark, updateGlobalStats, fallbackCopyText, navigateTo,
+    escapeHtml, persistData, getPark, updateGlobalStats, fallbackCopyText, navigateTo, triggerEmailDispatch,
     answers: value => { currentFormAnswers = value; }};
   if (document.readyState === "loading")`);
 vm.runInContext(source, context);
@@ -53,8 +54,11 @@ assert.match(node('input-inspector').validationMessage, /Ange besiktningsmannens
 app.appState.selectedParkId = parkId;
 app.appState.selectedFeatureId = 'Gångbro';
 app.saveDraft();
-assert.equal(app.appState.surveyData[parkId].startedAt, undefined);
+assert.equal(app.appState.surveyData[parkId], undefined);
 app.appState.settings.inspectorName = "Lasse";
+stored.set('lekplats_survey_v1_settings', JSON.stringify(app.appState.settings));
+app.updateGlobalStats();
+assert.deepEqual(Object.keys(app.appState.surveyData), []);
 app.navigateTo('overview', {parkId: parkId});
 app.navigateTo('form', {featureId: 'Gångbro'});
 history.back();
@@ -126,11 +130,10 @@ assert.equal(app.generateReportText(app.getPark(parkId)), oldReport);
 vm.runInContext('FEATURE_TYPES["Gångbro"].points.reverse();', context);
 app.startNewSurvey();
 assert.equal(app.calculateParkProgress(parkId).completed, 0);
-assert.equal(app.appState.surveyData[parkId].history, undefined);
-assert.equal(app.appState.surveyData[parkId].startedAt, undefined);
+assert.equal(app.appState.surveyData[parkId], undefined);
 app.finishAndClosePark();
-assert.equal(app.appState.surveyData[parkId].status, 'not-started');
-const survey = app.appState.surveyData[parkId];
+assert.equal(app.appState.surveyData[parkId], undefined);
+const survey = app.appState.surveyData[parkId] = {status: 'in-progress', features: {}};
 for (const id of app.getPark(parkId).featureIds) {
   context.typeId = id;
   const size = vm.runInContext('FEATURE_TYPES[typeId].points.length', context);
@@ -139,6 +142,28 @@ for (const id of app.getPark(parkId).featureIds) {
 app.finishAndClosePark();
 assert.equal(survey.status, 'reported');
 assert.equal(node('stat-completed').textContent, 1);
+// The address keeps its @ and the subject uses the right plural.
+survey.features['Gångbro'].points[0] = {status: 'issue', note: 'Lös'};
+app.appState.selectedParkId = parkId;
+app.triggerEmailDispatch();
+assert.match(context.window.location.href, /^mailto:lekplatskontroll@kommun\.se\?subject=/);
+assert.match(decodeURIComponent(context.window.location.href), /\(1 anmärkning\)/);
+survey.features['Gångbro'].points[0] = {status: 'ok', note: ''};
+// A reported park asks before it can be edited, and only once.
+let asked = 0;
+context.confirm = () => { asked++; return false; };
+app.navigateTo('overview', {parkId});
+app.navigateTo('form', {parkId, featureId: 'Gångbro'});
+assert.equal(app.appState.currentScreen, 'overview');
+assert.equal(survey.status, 'reported');
+context.confirm = () => { asked++; return true; };
+app.navigateTo('form', {parkId, featureId: 'Gångbro'});
+assert.equal(app.appState.currentScreen, 'form');
+app.navigateTo('overview', {parkId});
+app.navigateTo('form', {parkId, featureId: 'Gångbro'});
+assert.equal(asked, 2);
+assert.equal(survey.status, 'reported');
+app.navigateTo('overview', {parkId});
 context.document.createElement = () => ({style: {}, focus() {}, select() {}});
 context.document.body = {appendChild() {}, removeChild() {}};
 context.document.execCommand = () => false;
@@ -149,9 +174,18 @@ assert.equal(app.persistData(), false);
 assert.equal(node('storage-warning').hidden, false);
 failStorage = false;
 stored.set('lekplats_survey_v1_data', 'invalid JSON');
+node('storage-warning').hidden = true;
 app.loadStorage();
-assert.equal(app.persistData(), false);
-assert.equal(stored.get('lekplats_survey_v1_data'), 'invalid JSON');
+assert.deepEqual(Object.keys(app.appState.surveyData), []);
+assert.equal(stored.has('lekplats_survey_v1_data'), false);
+assert.match(node('storage-warning').textContent, /har rensats/);
+stored.set('lekplats_survey_v1_data', JSON.stringify({[parkId]: survey}));
+stored.set('lekplats_survey_v1_settings', '{broken');
+app.loadStorage();
+assert.equal(app.appState.surveyData[parkId].status, 'reported');
+assert.equal(app.appState.settings.recipientEmail, 'lekplatskontroll@kommun.se');
+assert.equal(app.persistData(), true);
+stored.set('lekplats_survey_v1_data', 'invalid JSON');
 stored.set('another_app', 'keep me');
 stored.set('lekplats_survey_v1_settings', '{"inspectorName":"Zelda"}');
 context.location.href = 'http://localhost:8080/?reset=0';
@@ -195,7 +229,7 @@ vm.runInContext(`
   const originalParks = JSON.parse(JSON.stringify(MUNICIPAL_PARKS));
   FEATURE_TYPES['Gångbro'].points = [...FEATURE_TYPES['Gångbro'].points.slice(0, -1).reverse(), 'Ny kontroll'];
   FEATURE_TYPES['Gångbro'].pointIds = FEATURE_TYPES['Gångbro'].points.map((_, i) => 'Gångbro:' + (i + 1));
-  FEATURE_TYPES['Nytt element'] = {id: 'Nytt element', name: 'Nytt element', icon: '📋', points: ['Ny punkt'], pointIds: ['Nytt element:1']};
+  FEATURE_TYPES['Nytt element'] = {id: 'Nytt element', name: 'Nytt element', points: ['Ny punkt'], pointIds: ['Nytt element:1']};
   MUNICIPAL_PARKS.find(p => p.id === reconcileParkId).featureIds.push('Nytt element');
 `, context);
 assert.equal(app.reconcileInspections(), true);
@@ -214,7 +248,7 @@ assert.equal(app.reconcileInspections(), true);
 assert.equal(JSON.stringify(app.appState.surveyData[parkId]), reportedCopy);
 app.startNewSurvey();
 assert.ok(app.getPark(parkId).featureIds.includes('Nytt element'));
-assert.equal(app.appState.surveyData[parkId].history, undefined);
+assert.equal(app.appState.surveyData[parkId], undefined);
 assert.equal(app.getFeatureStatus(parkId, 'Gångbro').answered, 0);
 app.navigateTo('form', {featureId: 'Gångbro'});
 app.answers({0: {status: 'ok', note: ''}});
@@ -228,5 +262,14 @@ failStorage = false;
 assert.equal(app.reconcileInspections(), true);
 assert.equal(app.getFeatureStatus(parkId, 'Gångbro').answered, 0);
 assert.equal(app.calculateParkProgress(parkId).started, true);
+// A park removed from Excel keeps its answers hidden and returns if the park comes back.
+const hiddenSurvey = JSON.stringify(app.appState.surveyData[parkId]);
+vm.runInContext('MUNICIPAL_PARKS = MUNICIPAL_PARKS.filter(p => p.id !== reconcileParkId);', context);
+assert.equal(app.reconcileInspections(), true);
+assert.equal(JSON.stringify(app.appState.surveyData[parkId]), hiddenSurvey);
+app.updateGlobalStats();
+assert.equal(node('stat-total').textContent, vm.runInContext('MUNICIPAL_PARKS.length', context));
 vm.runInContext('FEATURE_TYPES = originalTypes; MUNICIPAL_PARKS = originalParks;', context);
-console.log('Passed: browser back/forward, reload screen restoration, automatic completion, partial progress, draft recovery, inspector attribution, report stability, required notes, HTML escaping, submission confirmation/count, archived report, clipboard/storage failure, corrupt-data protection.');
+assert.equal(app.reconcileInspections(), true);
+assert.ok(app.appState.surveyData[parkId].catalog);
+console.log('Passed: browser back/forward, reload screen restoration, automatic completion, partial progress, draft recovery, inspector attribution, report stability, required notes, HTML escaping, submission confirmation/count, mailto address and subject, reported-park unlock, clipboard/storage failure, unreadable data, hidden removed parks.');

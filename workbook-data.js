@@ -27,7 +27,7 @@ function buildConfiguration(parks, elements) {
     const points = elements.slice(1).map(row => row[index]).filter(Boolean);
     if (!points.length) throw new Error(`${name} saknar kontroller.`);
     unique(points, `Kontroller för ${name}`);
-    types[name] = {id: name, name, icon: '📋', points,
+    types[name] = {id: name, name, points,
       pointIds: points.map((_, i) => `${name}:${i + 1}`)};
   });
   const municipalParks = parks.slice(1).map(row => {
@@ -66,36 +66,55 @@ function configurationFromWorkbook(workbook) {
     readWorkbookRows(workbook, 'Element'));
 }
 
-async function readConfiguration() {
-  async function parse(response) {
-    if (!response.ok) throw new Error(`Kunde inte läsa lekplatskontroll.xlsx (${response.status}).`);
-    return configurationFromWorkbook(XLSX.read(await response.clone().arrayBuffer(), {type: 'array'}));
-  }
-  let networkFailed = true;
+const WORKBOOK_URL = './data/lekplatskontroll.xlsx';
+const WORKBOOK_CACHE = 'lekplatskontroll-workbook';
+const WORKBOOK_TIMEOUT_MS = 10000;
+
+async function cachedConfiguration() {
+  if (typeof caches === 'undefined') return null;
   try {
-    const response = await fetch('./data/lekplatskontroll.xlsx', {cache: 'no-store'});
-    networkFailed = false;
-    const config = await parse(response);
-    if (typeof caches !== 'undefined') {
-      try {
-        const cache = await caches.open('lekplatskontroll-workbook');
-        await cache.put('./data/lekplatskontroll.xlsx', response);
-      } catch (_) { /* An unavailable offline cache must not block online use. */ }
-    }
-    return {...config, offline: false};
-  } catch (error) {
-    const cache = typeof caches !== 'undefined' && await caches.open('lekplatskontroll-workbook');
-    const response = cache && await cache.match('./data/lekplatskontroll.xlsx');
-    if (!response) throw error;
-    const config = await parse(response);
-    return {...config, offline: networkFailed,
-      warning: networkFailed ? 'Offline · sparat underlag' : 'Kunde inte uppdatera checklistorna. Senast giltiga underlag används.'};
+    const response = await (await caches.open(WORKBOOK_CACHE)).match(WORKBOOK_URL);
+    return response ? configurationFromWorkbook(XLSX.read(await response.arrayBuffer(), {type: 'array'})) : null;
+  } catch (_) {
+    return null;
   }
 }
 
-async function loadConfiguration() {
-  const config = await readConfiguration();
+async function fetchConfiguration() {
+  const controller = typeof AbortController === 'undefined' ? null : new AbortController();
+  const timer = setTimeout(() => controller && controller.abort(), WORKBOOK_TIMEOUT_MS);
+  let response, bytes;
+  try {
+    response = await fetch(WORKBOOK_URL, {cache: 'no-store', signal: controller && controller.signal});
+    if (!response.ok) throw new Error(`Kunde inte läsa lekplatskontroll.xlsx (${response.status}).`);
+    bytes = await response.clone().arrayBuffer();
+  } catch (error) {
+    if (response && !response.ok) throw error;
+    throw new Error('Ingen kontakt med servern.');
+  } finally {
+    clearTimeout(timer);
+  }
+  const config = configurationFromWorkbook(XLSX.read(bytes, {type: 'array'}));
+  // Only a validated workbook replaces the offline copy.
+  if (typeof caches !== 'undefined') {
+    try {
+      await (await caches.open(WORKBOOK_CACHE)).put(WORKBOOK_URL, response);
+    } catch (_) { /* An unavailable offline cache must not block online use. */ }
+  }
+  return config;
+}
+
+function applyConfiguration(config) {
   FEATURE_TYPES = config.featureTypes;
   MUNICIPAL_PARKS = config.parks;
   return config;
+}
+
+// The saved copy is used whenever it exists; updates are fetched on request.
+async function loadConfiguration() {
+  return applyConfiguration(await cachedConfiguration() || await fetchConfiguration());
+}
+
+async function updateConfiguration() {
+  return applyConfiguration(await fetchConfiguration());
 }

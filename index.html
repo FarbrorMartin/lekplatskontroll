@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Örebro lekplatskoll</title>
-  <link rel="stylesheet" href="styles.css?v=25">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -64,9 +64,6 @@
 
       <!-- SKÄRM 2: Översikt över lekplats -->
       <section id="screen-park-overview" class="screen">
-        <div class="survey-actions">
-          <button id="btn-history" class="secondary-btn">Tidigare kontroller</button>
-        </div>
         <div id="features-list-container" class="feature-list">
           <!-- Genereras dynamiskt via app.js -->
         </div>
@@ -153,6 +150,13 @@
           <input type="email" required id="setting-recipient-email" class="settings-input" placeholder="t.ex. drift@kommun.se">
         </div>
 
+        <div style="margin-top: 24px;">
+          <button id="btn-update-forms" class="secondary-btn" style="width: 100%;">
+            Läs in uppdaterade formulär
+          </button>
+          <div id="update-forms-status" class="settings-help" role="status">Hämtar lekplatser och kontroller från Excel-filen. Kräver internet.</div>
+        </div>
+
         <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
           <button id="btn-clear-all-data" class="secondary-btn" style="color: #dc2626; border-color: #fca5a5; width: 100%;">
             Rensa inspektionsdata
@@ -178,12 +182,6 @@
       </div>
     </div>
   </div>
-  <div id="modal-history" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Tidigare kontroller">
-    <div class="modal-content">
-      <div class="modal-header"><h3>Tidigare kontroller</h3><button id="btn-close-history" class="secondary-btn">Stäng</button></div>
-      <div class="modal-body"><pre id="history-content" class="report-text-preview" tabindex="0"></pre></div>
-    </div>
-  </div>
   <div id="storage-warning" role="alert" hidden></div>
   <!-- Toast meddelande -->
   <div id="toast" class="toast" role="status" aria-live="polite">Klart!</div>
@@ -192,6 +190,6 @@
   <script src="parks-data.js"></script>
   <script src="vendor/xlsx.mini.min.js"></script>
   <script src="workbook-data.js"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js"></script>
 </body>
 </html>
