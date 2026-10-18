@@ -87,10 +87,11 @@ En lekplats som tas bort ur Excel visas inte längre och räknas inte i statisti
 men dess sparade svar behålls dolda. Läggs lekplatsen tillbaka med samma namn
 visas svaren igen.
 
-Appen använder sin sparade kopia av Excel-underlaget och hämtar det bara från
-servern första gången, eller när användaren trycker Läs in uppdaterade formulär
-i inställningarna. Hämtningen avbryts efter tio sekunder utan svar. En ny fil
-sparas först när den har validerats; annars används de tidigare formulären.
+Appen hämtar Excel-underlaget från servern varje gång den startar, och när
+användaren trycker Läs in uppdaterade formulär i inställningarna. Hämtningen
+avbryts efter fem sekunder utan svar. Utan internet används den sparade kopian
+utan varning. En ny fil sparas först när den har validerats; en ogiltig fil
+visar ett meddelande och de tidigare formulären används.
 Kontroller som ännu inte har markerats som rapporterade uppdateras vid inläsningen:
 svar behålls för samma elementnamn och kontrolltext, även vid omsortering.
 Ändrade eller borttagna kontrolltexter förlorar sina svar; nya element och kontroller
@@ -159,10 +160,18 @@ går att läsa rensas den och appen visar en varning.
 
 På HTTPS (eller localhost) sparar en service worker appen i webbläsarens cache
 efter det första besöket med internetanslutning. Låt installationen bli klar
-innan du förlitar dig på att appen kan öppnas utan internet. Appen öppnas alltid
-från den sparade kopian och hämtar en eventuell ny version i bakgrunden. En
-publicerad uppdatering syns därför från andra gången appen öppnas. Inga
-versionsnummer behöver ändras vid publicering. Detta stöd gäller
+innan du förlitar dig på att appen kan öppnas utan internet.
+
+Varje gång appen öppnas, och när den kommer tillbaka till förgrunden, frågar
+service workern servern efter sidans ändringstid. GitHub Pages ger alla filer
+en ny ändringstid vid varje publicering, även när bara Excel-filen ändrats.
+Har tiden ändrats hämtas alla filer på nytt och appen laddas om när användaren
+är i lekplatslistan, aldrig mitt i en lekplats. Svaren sparas löpande, så inget
+går förlorat. Utan internet, eller om servern inte svarar inom tre sekunder,
+öppnas den sparade kopian. Inga versionsnummer behöver ändras vid publicering.
+En ny service worker tar över direkt, rensar äldre sparade kopior och laddar om
+öppna sidor, så telefoner med en äldre version uppdateras utan att någon behöver
+rensa webbläsardata. Detta stöd gäller
 inte när du öppnar filen direkt eller använder HTTP via datorns lokala IP-adress
 på telefonen.
 
@@ -176,14 +185,19 @@ till urklipp.
 
 ## Verifiering
 
-Kör `node test-app.cjs` för att kontrollera återställning av utkast,
-besiktningsman, obligatoriska beskrivningar, säker visning av text,
-låsning av rapporterade lekplatser och hantering av lagringsfel. Kör `node --check app.js` och
-`node --check sw.js` för syntaxkontroll.
+Kör `node test.cjs` för att köra alla tester. Den skriver en rad när allt
+fungerar och visar bara fel i detalj.
 
-Kör `node test-workbook.cjs` för att testa läsning av XLSX-filer och validering
-av Excel-underlaget. Båda testerna använder en liten arbetsbok som skapas i
-`test-fixture.cjs`, så de påverkas inte av ändringar i den riktiga Excel-filen.
+- `test-app.cjs`: återställning av utkast, besiktningsman, obligatoriska
+  beskrivningar, säker visning av text, låsning av rapporterade lekplatser och
+  hantering av lagringsfel.
+- `test-workbook.cjs`: läsning av XLSX-filer, validering av Excel-underlaget och
+  hämtning med reservkopia utan internet.
+- `test-sw.cjs`: service workerns uppdateringar, rensning av äldre versioner och
+  användning utan internet, i en simulerad webbläsare.
+
+Testerna använder en liten arbetsbok som skapas i `test-fixture.cjs`, så de
+påverkas inte av ändringar i den riktiga Excel-filen.
 Kör `node check-workbook.cjs` för att validera `data/lekplatskontroll.xlsx`.
 
 De automatiska testerna använder en simulerad DOM. Mobilens layout och

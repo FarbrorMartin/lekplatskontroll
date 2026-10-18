@@ -71,9 +71,12 @@ ctx.caches = {open: async () => ({match: async () => stored.at(-1), put: async (
   await ctx.loadConfiguration();
   assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);
   assert.equal(stored.length, 1);
-  // With a saved copy, starting the app does not use the network.
-  ctx.fetch = async () => { throw new Error('network used'); };
+  // Starting the app asks the server first and saves the new copy.
   await ctx.loadConfiguration();
+  assert.equal(stored.length, 2);
+  // Offline, the saved copy is used without a warning.
+  ctx.fetch = async () => { throw new Error('offline'); };
+  assert.equal((await ctx.loadConfiguration()).warning, '');
   assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);
   // A failed update keeps the previous forms.
   await assert.rejects(ctx.updateConfiguration(), /Ingen kontakt med servern/);
@@ -83,7 +86,9 @@ ctx.caches = {open: async () => ({match: async () => stored.at(-1), put: async (
   const brokenBytes = XLSX.write(broken, {type: 'buffer', bookType: 'xlsx'});
   ctx.fetch = async () => ({ok: true, clone: () => ({arrayBuffer: async () => brokenBytes})});
   await assert.rejects(ctx.updateConfiguration(), /Använd X/);
-  assert.equal(stored.length, 1);
+  // An invalid new file at startup falls back to the saved copy and says why.
+  assert.match((await ctx.loadConfiguration()).warning, /Använd X.*Tidigare formulär används/);
+  assert.equal(stored.length, 2);
   assert.equal(vm.runInContext('MUNICIPAL_PARKS.length', ctx), parkCount);
-  console.log('Passed: XLSX reading, named tabs/columns, element lists of different lengths, shared wording, blank cells, X assignments, added playgrounds, duplicates, missing headers, mismatched elements, empty checklists, Excel errors, missing formula values, cache-first loading and failed updates.');
+  console.log('Passed: XLSX reading, named tabs/columns, element lists of different lengths, shared wording, blank cells, X assignments, added playgrounds, duplicates, missing headers, mismatched elements, empty checklists, Excel errors, missing formula values, server-first loading with offline fallback, and failed updates.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

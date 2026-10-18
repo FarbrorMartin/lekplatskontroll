@@ -68,7 +68,7 @@ function configurationFromWorkbook(workbook) {
 
 const WORKBOOK_URL = './data/lekplatskontroll.xlsx';
 const WORKBOOK_CACHE = 'lekplatskontroll-workbook';
-const WORKBOOK_TIMEOUT_MS = 10000;
+const WORKBOOK_TIMEOUT_MS = 5000;
 
 async function cachedConfiguration() {
   if (typeof caches === 'undefined') return null;
@@ -90,7 +90,7 @@ async function fetchConfiguration() {
     bytes = await response.clone().arrayBuffer();
   } catch (error) {
     if (response && !response.ok) throw error;
-    throw new Error('Ingen kontakt med servern.');
+    throw Object.assign(new Error('Ingen kontakt med servern.'), {offline: true});
   } finally {
     clearTimeout(timer);
   }
@@ -110,9 +110,15 @@ function applyConfiguration(config) {
   return config;
 }
 
-// The saved copy is used whenever it exists; updates are fetched on request.
+// The server is asked first. Offline the saved copy is used silently; an invalid new file is reported.
 async function loadConfiguration() {
-  return applyConfiguration(await cachedConfiguration() || await fetchConfiguration());
+  try {
+    return applyConfiguration(await fetchConfiguration());
+  } catch (error) {
+    const cached = await cachedConfiguration();
+    if (!cached) throw error;
+    return {...applyConfiguration(cached), warning: error.offline ? '' : `${error.message} Tidigare formulär används.`};
+  }
 }
 
 async function updateConfiguration() {

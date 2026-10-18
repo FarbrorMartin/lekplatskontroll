@@ -85,7 +85,23 @@
       if (event.state && event.state.app === 'lekplatskontroll') restoreRoute(event.state);
     });
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).catch(() => {});
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data !== 'updated') return;
+        updatePending = true;
+        applyPendingUpdate();
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') navigator.serviceWorker.controller?.postMessage('check-update');
+      });
+    }
+  }
+
+  // A newly published version is loaded on the park list, never in the middle of a park.
+  let updatePending = false;
+  function applyPendingUpdate() {
+    if (updatePending && appState.currentScreen === 'parks' && !document.querySelector('.modal-overlay.active')) {
+      location.reload();
     }
   }
 
@@ -391,6 +407,7 @@
       elScreenParks.classList.add("active");
       renderParksList();
       updateGlobalStats();
+      applyPendingUpdate();
 
     } else if (screen === "overview") {
       const park = getPark(params.parkId || appState.selectedParkId);
@@ -937,6 +954,7 @@
     modal.classList.remove('active');
     document.querySelector('.app-container').inert = false;
     if (modalOpener) modalOpener.focus();
+    applyPendingUpdate();
   }
 
   function startNewSurvey(confirmed = false) {
@@ -1015,14 +1033,16 @@
 
   async function start() {
     const status = document.getElementById('loading-status');
+    let config;
     try {
-      await loadConfiguration();
+      config = await loadConfiguration();
     } catch (error) {
       status.textContent = `Kunde inte läsa formulären: ${error.message} Kontrollera internetanslutningen och ladda om sidan.`;
       document.querySelectorAll('.inspector-bar, .stats-banner, #btn-settings').forEach(el => { el.style.display = 'none'; });
       return;
     }
-    status.hidden = true;
+    status.textContent = config.warning || '';
+    status.hidden = !config.warning;
     init();
   }
 
