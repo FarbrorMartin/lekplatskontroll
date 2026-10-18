@@ -77,8 +77,10 @@ Lägg till lekplatser som nya rader med unika namn. Lägg till kontroller direkt
 under elementets rubrik; kontroller behöver inga ID:n. För att lägga till ett
 element skapar du en kolumn med samma rubrik i båda flikarna, skriver dess
 kontroller och markerar vilka lekplatser som har elementet.
-Spara som `.xlsx`, inte det äldre formatet `.xls`. Kontrollera filen med
-`node check-workbook.cjs` innan du publicerar den.
+Spara som `.xlsx`, inte det äldre formatet `.xls`. Kontrollera filen innan
+du publicerar den: dubbelklicka på `check-workbook.bat`, eller dra en annan
+Excel-fil till den. Den använder appens egna regler och visar antingen antal
+lekplatser, element och kontroller eller vad som är fel. Kräver Node.js.
 
 Lekplatsens namn identifierar dess sparade kontroller. Sortering i Excel påverkar
 inte sparade svar, men ett namnbyte gör att lekplatsen behandlas som en ny lekplats.
