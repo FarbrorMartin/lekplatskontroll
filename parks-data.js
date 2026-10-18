@@ -1,6 +1,6 @@
 ﻿let FEATURE_TYPES = Object.create(null);
 let MUNICIPAL_PARKS = [];
 const DEFAULT_SETTINGS = {
-  recipientEmail: "lekplatskontroll@kommun.se",
+  recipientEmail: "mimmi.beckman@orebro.se",
   inspectorName: ""
 };

@@ -146,7 +146,7 @@ assert.equal(node('stat-completed').textContent, 1);
 survey.features['Gångbro'].points[0] = {status: 'issue', note: 'Lös'};
 app.appState.selectedParkId = parkId;
 app.triggerEmailDispatch();
-assert.match(context.window.location.href, /^mailto:lekplatskontroll@kommun\.se\?subject=/);
+assert.match(context.window.location.href, /^mailto:mimmi\.beckman@orebro\.se\?subject=/);
 assert.match(decodeURIComponent(context.window.location.href), /\(1 anmärkning\)/);
 survey.features['Gångbro'].points[0] = {status: 'ok', note: ''};
 // A reported park asks before it can be edited, and only once.
@@ -183,8 +183,7 @@ stored.set('lekplats_survey_v1_data', JSON.stringify({[parkId]: survey}));
 stored.set('lekplats_survey_v1_settings', '{broken');
 app.loadStorage();
 assert.equal(app.appState.surveyData[parkId].status, 'reported');
-assert.equal(app.appState.settings.recipientEmail, 'lekplatskontroll@kommun.se');
-assert.equal(app.persistData(), true);
+assert.equal(app.appState.settings.recipientEmail, 'mimmi.beckman@orebro.se');assert.equal(app.persistData(), true);
 stored.set('lekplats_survey_v1_data', 'invalid JSON');
 stored.set('another_app', 'keep me');
 stored.set('lekplats_survey_v1_settings', '{"inspectorName":"Zelda"}');
