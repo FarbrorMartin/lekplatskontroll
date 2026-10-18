@@ -40,7 +40,7 @@ let source = fs.readFileSync('app.js', 'utf8');
 source = source.replace('  if (document.readyState === "loading")', `
   globalThis.test = {init, appState, saveDraft, getFeatureStatus, loadStorage, resetStorageFromUrl, clearAllData, reconcileInspections,
     generateReportText, renderReportPreview, calculateParkProgress, startNewSurvey, finishAndClosePark,
-    escapeHtml, persistData, getPark, updateGlobalStats, fallbackCopyText, navigateTo, triggerEmailDispatch,
+    escapeHtml, persistData, persistSettings, getPark, updateGlobalStats, fallbackCopyText, navigateTo, triggerEmailDispatch,
     answers: value => { currentFormAnswers = value; }};
   if (document.readyState === "loading")`);
 vm.runInContext(source, context);
@@ -215,6 +215,12 @@ assert.equal(app.appState.settings.inspectorName, '');
 assert.equal(node('input-inspector').value, '');
 assert.equal(app.appState.settings.recipientEmail, 'test@example.com');
 assert.equal(stored.get('another_app'), 'keep me');
+// Only settings that differ from the defaults are saved, so a new default reaches every phone.
+assert.equal(stored.get('lekplats_survey_v1_settings'), '{"recipientEmail":"test@example.com"}');
+app.appState.settings = {recipientEmail: 'mimmi.beckman@orebro.se', inspectorName: 'Zelda'};
+app.persistSettings();
+assert.equal(stored.get('lekplats_survey_v1_settings'), '{"inspectorName":"Zelda"}');
+app.appState.settings.recipientEmail = 'test@example.com';
 // Reconciliation matches text, not position, and never changes a reported survey.
 app.appState.settings.inspectorName = 'Zelda';
 app.navigateTo('overview', {parkId});

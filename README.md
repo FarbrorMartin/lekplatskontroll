@@ -44,6 +44,8 @@ ny checklista.
 ### Inställningar och rensning
 
 Tryck på kugghjulet i lekplatslistan för att ändra mottagande e-postadress.
+Adressen sparas på telefonen bara om den skiljer sig från standardadressen i
+`parks-data.js`, så en ändrad standardadress gäller alla som inte valt en egen.
 Där finns också Läs in uppdaterade formulär, som hämtar den senaste Excel-filen
 (kräver internet), och Rensa inspektionsdata. Du får bekräfta innan pågående och
 slutförda inspektioner och ditt namn tas bort. Mottagaradressen behålls.

@@ -162,9 +162,14 @@
     }
   }
 
+  // Only values that differ from the defaults are saved, so a changed default reaches every phone.
+  function settingsJson(settings) {
+    return JSON.stringify(Object.fromEntries(Object.entries(settings).filter(([key, value]) => value !== DEFAULT_SETTINGS[key])));
+  }
+
   function persistSettings() {
     try {
-      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(appState.settings));
+      localStorage.setItem(STORAGE_KEY_SETTINGS, settingsJson(appState.settings));
       return true;
     } catch (e) {
       storageWarning('Kunde inte spara inställningar.');
@@ -902,7 +907,7 @@
     if (!confirm('Rensar pågående och slutförda inspektioner i appen inklusive namn på besiktningsman. Rapporter som skickats med epost påverkas inte.\n\nVill du rensa inspektionsdata?')) return;
     const settings = {...appState.settings, inspectorName: ''};
     try {
-      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+      localStorage.setItem(STORAGE_KEY_SETTINGS, settingsJson(settings));
       localStorage.removeItem(STORAGE_KEY_DATA);
     } catch (_) {
       storageWarning('Kunde inte rensa inspektionsdata. Försök igen.');
